@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>無限坑道</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#13081f; --panel:#241440; --pri:#9d4edd; --pri2:#c77dff; --pri3:#e0aaff;
+  --gold:#ffd60a; --cyan:#4cc9f0; --pink:#ff5d8f;
+  --txt:#f2e9ff; --sub:#a894c7; --line:#3d2563;
+  --m1:#4cc9f0; --m2:#58e08a; --m3:#ff9f45; --m4:#ff5d8f;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);
+  font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;
+  font-weight:700;color:var(--txt);-webkit-user-select:none;user-select:none}
+body{display:flex;flex-direction:column}
+
+#hud{flex:0 0 auto;padding:calc(env(safe-area-inset-top) + 8px) 12px 7px;
+  background:linear-gradient(180deg,#2a1148,#1d0f30);border-bottom:2px solid var(--line)}
+.hudrow{display:flex;gap:8px;align-items:center}
+.cur{flex:1;background:#0e0518;border:2px solid var(--line);border-radius:12px;
+  padding:7px 10px;display:flex;align-items:center;gap:6px;font-size:17px}
+.cur small{font-size:11px;color:var(--sub)}
+.cur .v{margin-left:auto;font-variant-numeric:tabular-nums;color:var(--cyan)}
+.tix{flex:0 0 auto;background:#0e0518;border:2px solid var(--line);border-radius:12px;
+  padding:7px 9px;font-size:12px;color:var(--gold);white-space:nowrap}
+.stats{display:flex;gap:9px;margin-top:6px;font-size:11px;color:var(--sub);
+  white-space:nowrap;overflow:hidden}
+.stats b{color:var(--pri3)}
+.stats .pos{margin-left:auto;color:var(--pri3)}
+
+#board{flex:1 1 auto;position:relative;overflow:hidden;background:var(--bg)}
+#cv{display:block;touch-action:none}
+#side{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:6px}
+#side button{position:relative;background:rgba(36,20,64,.94);border:2px solid var(--line);
+  border-radius:12px;width:42px;height:42px;color:var(--txt);font-family:inherit;
+  font-size:17px;font-weight:700;backdrop-filter:blur(6px)}
+#side button:disabled{opacity:.3}
+#side button.on{background:var(--pri);border-color:var(--pri3);box-shadow:0 0 14px rgba(157,78,221,.7)}
+#side .bdg{position:absolute;top:-5px;right:-5px;background:var(--pink);border-radius:9px;
+  font-size:10px;padding:0 5px;line-height:15px;color:#fff}
+
+.pop{position:absolute;right:56px;top:8px;border:2px solid var(--line);border-radius:14px;
+  background:rgba(22,10,38,.97);backdrop-filter:blur(8px);padding:9px;display:none;
+  width:240px;max-height:72%;overflow-y:auto;box-shadow:0 8px 28px rgba(0,0,0,.6);z-index:20}
+.pop.show{display:block}
+.pop h4{font-size:11px;color:var(--sub);margin:1px 3px 8px}
+.obag{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.obag .o{position:relative;background:var(--panel);border:2px solid transparent;
+  border-radius:11px;padding:4px 2px 3px;text-align:center}
+.obag .o.z{opacity:.28}
+.obag .o svg{width:100%;display:block}
+.obag .o .q{position:absolute;right:-2px;bottom:-2px;background:#0e0518;border:1px solid var(--line);
+  border-radius:7px;font-size:9px;padding:0 4px;color:var(--pri3)}
+.mk{display:flex;gap:6px;flex-wrap:wrap}
+.mk .c{width:38px;height:38px;border-radius:11px;border:3px solid;position:relative;
+  background:#0e0518;display:flex;align-items:center;justify-content:center;font-size:15px}
+.mk .c.set::after{content:'';position:absolute;inset:5px;border-radius:5px;background:currentColor}
+.mk .c .x{position:absolute;top:-6px;right:-6px;width:17px;height:17px;border-radius:50%;
+  background:#000;border:1px solid var(--line);color:#fff;font-size:10px;line-height:15px;text-align:center}
+
+#modebar{position:absolute;left:8px;right:8px;bottom:8px;display:none;align-items:center;
+  gap:7px;background:rgba(22,10,38,.96);border:2px solid var(--pri);border-radius:13px;
+  padding:8px 10px;font-size:12px;backdrop-filter:blur(8px);z-index:15}
+#modebar.show{display:flex}
+#modebar svg{width:26px;height:26px;flex:0 0 auto}
+#modebar .tx{flex:1;line-height:1.4;font-size:11.5px}
+#modebar button{background:var(--panel);border:2px solid var(--line);
+  color:var(--txt);border-radius:9px;padding:5px 9px;font-family:inherit;font-size:12px;font-weight:700}
+#modebar .dir{display:flex;gap:3px}
+#modebar .dir button{width:28px;padding:5px 0}
+#modebar .dir button.on{background:var(--pri);border-color:var(--pri3)}
+
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);
+  background:rgba(14,5,24,.96);border:2px solid var(--pri);border-radius:12px;
+  padding:9px 15px;font-size:13px;opacity:0;transition:opacity .25s;
+  pointer-events:none;z-index:60;text-align:center;max-width:90%;line-height:1.5}
+#toast.show{opacity:1}
+.ring{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;
+  border:4px solid var(--pink);pointer-events:none;z-index:12;
+  box-shadow:0 0 12px rgba(255,93,143,.75);animation:rng .62s cubic-bezier(.2,.7,.3,1) forwards}
+.ring.d2{animation-delay:.11s;border-width:2px}
+@keyframes rng{0%{transform:scale(.35);opacity:0}12%{opacity:1}100%{transform:scale(4.8);opacity:0}}
+/* 旗を外した時：内へ縮む薄紫の輪 */
+.ring.off{border-color:#cdbcef;box-shadow:0 0 10px rgba(205,188,239,.55);
+  animation:rngoff .58s cubic-bezier(.3,.05,.25,1) forwards}
+.ring.off.d2{animation-delay:.1s;border-width:2px}
+@keyframes rngoff{0%{transform:scale(4.6);opacity:0}18%{opacity:1}100%{transform:scale(.3);opacity:0}}
+.spark{position:absolute;pointer-events:none;z-index:13;font-size:26px;line-height:1;
+  margin:-16px 0 0 -16px;animation:spk 1.15s cubic-bezier(.25,.6,.3,1) forwards;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.8))}
+.spark svg{width:34px;height:34px;display:block}
+@keyframes spk{0%{transform:translateY(4px) scale(.4);opacity:0}
+18%{opacity:1;transform:translateY(-14px) scale(1.25)}
+35%{transform:translateY(-26px) scale(1)}
+100%{transform:translateY(-78px) scale(.9);opacity:0}}
+
+/* 左下に流れる獲得表示 */
+#loot{position:absolute;left:8px;bottom:58px;display:flex;flex-direction:column-reverse;
+  gap:6px;pointer-events:none;z-index:14;max-width:68%}
+.loot{display:flex;align-items:center;gap:8px;background:rgba(20,9,36,.94);
+  border:2px solid var(--line);border-radius:13px;padding:5px 11px 5px 5px;font-size:12px;
+  backdrop-filter:blur(6px);box-shadow:0 4px 14px rgba(0,0,0,.5);
+  animation:lootin .32s cubic-bezier(.2,.8,.3,1), lootout .4s ease-in 2.7s forwards}
+.loot svg{width:30px;height:30px;flex:0 0 auto}
+.loot .ic{font-size:22px;width:30px;text-align:center;flex:0 0 auto}
+.loot b{color:var(--gold);margin-left:2px}
+.loot.rare{border-color:var(--gold);box-shadow:0 0 16px rgba(255,214,10,.45)}
+@keyframes lootin{from{transform:translateX(-115%);opacity:0}to{transform:none;opacity:1}}
+@keyframes lootout{to{transform:translateX(-115%);opacity:0}}
+
+#tabs{position:relative;z-index:55;flex:0 0 auto;display:flex;background:#1d0f30;
+  border-top:2px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+#tabs button{position:relative;flex:1;background:none;border:none;color:var(--sub);
+  padding:8px 2px 9px;font-size:10px;font-family:inherit;font-weight:700;
+  display:flex;flex-direction:column;align-items:center;gap:3px}
+#tabs button i{font-style:normal;font-size:19px;line-height:1}
+#tabs button.on{color:var(--pri3)}
+#tabs button.on i{filter:drop-shadow(0 0 7px var(--pri))}
+#tabs .dot{position:absolute;top:5px;right:calc(50% - 17px);width:9px;height:9px;
+  border-radius:50%;background:var(--pink);display:none}
+#tabs .dot.show{display:block}
+
+.panel{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;
+  flex-direction:column;padding-top:env(safe-area-inset-top)}
+.panel.show{display:flex}
+.ptitle{padding:12px 14px;font-size:17px;border-bottom:2px solid var(--line);
+  display:flex;align-items:center;background:#1d0f30}
+.ptitle .x{margin-left:auto;background:var(--panel);border:2px solid var(--line);
+  color:var(--txt);border-radius:10px;width:34px;height:34px;font-size:17px;font-family:inherit}
+.pbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:12px 14px calc(78px + env(safe-area-inset-bottom))}
+.card{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.card h3{font-size:15px;margin-bottom:3px;color:var(--pri3)}
+.card p{font-size:12px;color:var(--sub);line-height:1.6}
+.row{display:flex;gap:8px;align-items:center}
+input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--line);
+  border-radius:10px;padding:9px;color:var(--txt);font-family:inherit;font-size:15px;
+  font-weight:700;width:100%;-webkit-appearance:none}
+.btn{background:var(--pri);border:none;border-radius:11px;padding:11px 14px;color:#fff;
+  font-family:inherit;font-size:14px;font-weight:700;white-space:nowrap}
+.btn:disabled{background:#3a2a52;color:#7a6a92}
+.btn.sub{background:var(--panel);border:2px solid var(--line);color:var(--txt)}
+.btn.danger{background:#5c1f3a}
+.btn.wide{width:100%;margin-top:8px}
+.tag{display:inline-block;background:#0e0518;border:1px solid var(--line);border-radius:7px;
+  padding:2px 7px;font-size:11px;color:var(--sub);margin-right:5px}
+.sec{font-size:12px;color:var(--sub);margin:16px 0 8px;letter-spacing:.06em}
+.done{border-color:var(--pri);background:linear-gradient(135deg,#2e1a52,#241440)}
+.seg{display:flex;gap:6px;margin-bottom:12px}
+.seg button{flex:1;background:var(--panel);border:2px solid var(--line);color:var(--sub);
+  border-radius:11px;padding:9px;font-family:inherit;font-size:13px;font-weight:700}
+.seg button.on{background:var(--pri);border-color:var(--pri3);color:#fff}
+
+#dlg{position:fixed;inset:0;background:rgba(5,2,10,.78);z-index:90;display:none;
+  align-items:center;justify-content:center;padding:22px;backdrop-filter:blur(3px)}
+#dlg.show{display:flex}
+.dbox{background:var(--panel);border:2px solid var(--pri);border-radius:18px;padding:18px;
+  max-width:340px;width:100%;text-align:center;box-shadow:0 14px 44px rgba(0,0,0,.7)}
+.dbox .dic{font-size:34px;margin-bottom:7px}
+.dbox .dic svg{width:56px;height:56px}
+.dbox h3{font-size:16px;margin-bottom:6px}
+.dbox p{font-size:12.5px;color:var(--sub);line-height:1.65}
+.dbox .row{margin-top:15px}
+.dbox .row .btn{flex:1}
+
+#gstage{display:flex;flex-direction:column;align-items:center;gap:12px}
+.machine{width:200px}
+.machine.shake{animation:shk .35s linear 3}
+@keyframes shk{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px) rotate(-1.3deg)}
+75%{transform:translateX(4px) rotate(1.3deg)}}
+#handle{transform-box:fill-box;transform-origin:center;transition:transform 1.2s cubic-bezier(.4,0,.3,1)}
+#handle.spin{transform:rotate(1080deg)}
+#glow{opacity:0;transition:opacity .5s}
+#glow.on{opacity:1}
+#coin{opacity:0}
+#coin.drop{animation:cdrop .6s ease-in forwards}
+@keyframes cdrop{0%{opacity:1;transform:translateY(-26px)}100%{opacity:0;transform:translateY(4px)}}
+#outcap{opacity:0}
+#outcap.out{animation:cout .5s ease-out forwards}
+@keyframes cout{0%{opacity:0;transform:translateY(-14px) scale(.6)}
+60%{opacity:1;transform:translateY(4px) scale(1.1)}100%{opacity:1;transform:translateY(0) scale(1)}}
+#caps{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;width:100%;margin-top:4px}
+.capw{display:flex;flex-direction:column;align-items:center;gap:4px}
+.capw .lab{font-size:9px;line-height:1.3;text-align:center;color:var(--txt)}
+.cap{width:100%;aspect-ratio:1;border-radius:50%;border:2px solid rgba(255,255,255,.25);position:relative;
+  display:flex;align-items:center;justify-content:center;font-size:21px;overflow:hidden}
+.cap::before{content:'';position:absolute;left:0;right:0;top:0;height:50%;
+  background:rgba(255,255,255,.22);border-radius:50% 50% 0 0/100% 100% 0 0}
+.cap .inner{position:relative;width:76%;height:76%;border-radius:50%;
+  background:rgba(8,3,16,.5);display:flex;align-items:center;justify-content:center}
+.cap .inner svg{width:92%;height:92%}
+.cap.shut{animation:bob 1.6s ease-in-out infinite}
+.cap.shut:nth-child(2n){animation-delay:.2s}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+.cap.open{animation:pop .4s ease-out}
+@keyframes pop{0%{transform:scale(.5)}60%{transform:scale(1.18)}100%{transform:scale(1)}}
+.c-w{background:linear-gradient(160deg,#c9bede,#6d6080)}
+.c-c{background:linear-gradient(160deg,#4cc9f0,#1a6c8c)}
+.c-g{background:linear-gradient(160deg,#ffd60a,#8a6b00);box-shadow:0 0 14px rgba(255,214,10,.6)}
+.c-r{background:linear-gradient(135deg,#ff5d8f,#ffd60a,#58e08a,#4cc9f0,#c77dff);
+  box-shadow:0 0 18px rgba(255,255,255,.55)}
+
+.ogrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.oc{background:var(--panel);border:2px solid var(--line);border-radius:13px;
+  padding:7px 3px 6px;text-align:center;position:relative}
+.oc svg{width:100%;max-width:48px;display:block;margin:0 auto}
+.oc .nm{font-size:9px;margin-top:4px;line-height:1.25}
+.oc .q{font-size:10px;color:var(--pri3);margin-top:2px}
+.oc.z svg{filter:grayscale(1) brightness(.45)}
+.oc.z .nm{color:var(--sub)}
+.odet{background:var(--panel);border:2px solid var(--line);border-radius:14px;
+  padding:11px;margin-bottom:9px;display:flex;gap:10px;align-items:flex-start}
+.odet svg{width:46px;height:46px;flex:0 0 auto}
+.odet .b{flex:1}
+.odet h4{font-size:13px;color:var(--pri3)}
+.odet .e{font-size:11.5px;line-height:1.55;margin-top:3px}
+.odet .c{font-size:10.5px;color:var(--gold);margin-top:4px}
+.odet .q{font-size:11px;color:var(--sub);margin-top:3px}
+
+.trk{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:12px;margin-bottom:11px}
+.trkh{font-size:14px;color:var(--pri3);margin-bottom:10px;display:flex;align-items:center;gap:6px}
+.trkh span{margin-left:auto;font-size:12px;color:var(--gold);font-variant-numeric:tabular-nums}
+.nd{display:flex;align-items:center;gap:10px;padding:8px 0}
+.nd+.nd{border-top:1px dashed rgba(61,37,99,.8)}
+.nd .bul{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);
+  background:#0e0518;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-size:12px}
+.nd .tx{font-size:12.5px;line-height:1.4}
+.nd .tx small{display:block;color:var(--sub);font-size:11px}
+.nd .rw{margin-left:auto;font-size:12px;color:var(--gold);white-space:nowrap}
+.nd.ok{opacity:.45}
+.nd.ok .bul{border-color:var(--pri2);background:var(--pri2);color:#2a1148}
+.nd.pd{background:linear-gradient(90deg,rgba(157,78,221,.26),transparent);
+  border-radius:10px;padding:8px 9px;margin:3px -5px}
+.nd.pd .bul{border-color:var(--gold);box-shadow:0 0 12px rgba(255,214,10,.6)}
+.nd .stbtn{margin-left:auto;background:var(--gold);color:#2a1148;border:none;border-radius:9px;
+  padding:7px 11px;font-family:inherit;font-size:12px;font-weight:700}
+.bar{height:5px;border-radius:3px;background:#0e0518;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--pri),var(--pri3))}
+
+#stamp{position:fixed;inset:0;z-index:95;display:none;align-items:center;justify-content:center;
+  pointer-events:none;background:rgba(5,2,10,.55)}
+#stamp.show{display:flex}
+#stamp .mk2{width:168px;height:168px;border-radius:50%;border:8px solid var(--pink);
+  color:var(--pink);display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:30px;opacity:0;animation:stmp .75s ease-out forwards;
+  box-shadow:0 0 22px rgba(255,93,143,.45),inset 0 0 22px rgba(255,93,143,.3)}
+#stamp .mk2 b{font-size:13px;letter-spacing:.1em;margin-top:5px}
+@keyframes stmp{0%{transform:scale(3) rotate(-24deg);opacity:0}
+55%{transform:scale(.88) rotate(-9deg);opacity:1}100%{transform:scale(1) rotate(-11deg);opacity:1}}
+#upd{position:fixed;left:10px;right:10px;bottom:calc(62px + env(safe-area-inset-bottom));
+  display:none;align-items:center;gap:9px;z-index:70;
+  background:linear-gradient(135deg,#3b1f6b,#241440);border:2px solid var(--pri2);
+  border-radius:14px;padding:10px 12px;font-size:12.5px;
+  box-shadow:0 6px 22px rgba(0,0,0,.6)}
+#upd.show{display:flex}
+#upd span{flex:1;line-height:1.4}
+#upd button{background:var(--pri);border:none;border-radius:10px;padding:8px 13px;
+  color:#fff;font-family:inherit;font-size:12.5px;font-weight:700}
+#upd .later{background:none;border:2px solid var(--line);color:var(--sub);padding:7px 10px}
+
+#stamp .got{position:absolute;bottom:31%;font-size:19px;color:var(--gold);opacity:0;
+  animation:fin .5s ease-out .5s forwards}
+@keyframes fin{to{opacity:1}}
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div class="hudrow">
+    <div class="cur" id="dia"><span>💎</span><small>ダイヤ</small><span class="v">0</span></div>
+    <div class="tix" id="tix">🎫 0 / 🏅 0</div>
+  </div>
+  <div class="stats">
+    <span>連続 <b id="s-streak">0</b>日</span>
+    <span>無事故 <b id="s-safe">0</b></span>
+    <span>累計 <b id="s-total">0</b></span>
+    <span class="pos" id="s-pos">0, 0</span>
+  </div>
+</div>
+
+<div id="board">
+  <canvas id="cv"></canvas>
+  <div id="side">
+    <button id="z-in">＋</button>
+    <button id="z-out">－</button>
+    <button id="b-mark">📍</button>
+    <button id="b-bag">🎒</button>
+  </div>
+  <div class="pop" id="pop-mark"></div>
+  <div class="pop" id="pop-bag"></div>
+  <div id="loot"></div>
+  <div id="modebar"></div>
+  <div id="toast"></div>
+</div>
+
+<nav id="tabs">
+  <button data-tab="gacha"><i>🎁</i>ガチャ</button>
+  <button data-tab="col"><i>📚</i>図鑑</button>
+  <button class="on" data-tab="play"><i>⛏️</i>プレイ</button>
+  <button data-tab="rm"><i>🏆</i>実績<span class="dot" id="cdot"></span></button>
+  <button data-tab="set"><i>⚙️</i>設定</button>
+</nav>
+
+<div class="panel" id="p-gacha">
+  <div class="ptitle">ガチャ<button class="x" data-close>✕</button></div>
+  <div class="pbody">
+    <div id="gmenu"></div>
+    <div id="gstage" style="display:none"></div>
+  </div>
+</div>
+
+<div class="panel" id="p-col">
+  <div class="ptitle">図鑑<button class="x" data-close>✕</button></div>
+  <div class="pbody">
+    <div class="seg">
+      <button class="on" data-seg="orb">オーブ</button>
+      <button data-seg="ch">キャラ</button>
+    </div>
+    <div id="seg-orb"></div>
+    <div id="seg-ch" style="display:none"></div>
+  </div>
+</div>
+
+<div class="panel" id="p-rm">
+  <div class="ptitle">実績<button class="x" data-close>✕</button></div>
+  <div class="pbody"><div id="seg-rm"></div></div>
+</div>
+
+<div class="panel" id="p-set">
+  <div class="ptitle">設定<button class="x" data-close>✕</button></div>
+  <div class="pbody">
+    <div class="sec">操作</div>
+    <div class="card">
+      <h3>旗を立てる長押しの長さ</h3>
+      <p id="lptxt"></p>
+      <div class="seg" id="lpseg" style="margin:10px 0 0"></div>
+    </div>
+    <div class="sec">表示</div>
+    <div class="card">
+      <h3>ガチャ演出</h3>
+      <p id="skiptxt"></p>
+      <button class="btn sub wide" id="skiptg">切り替える</button>
+    </div>
+    <div class="sec">テストプレイ用</div>
+    <div class="card">
+      <h3>🧪 補充</h3>
+      <p>全オーブを30個、💎3000、ガチャ券を補充する。<br>本番では外す予定の機能。</p>
+      <button class="btn wide" id="refill">補充する</button>
+      <button class="btn sub wide" id="emptyorbs">オーブを全部0にする</button>
+    </div>
+    <div class="card">
+      <h3>🧪 盤面リセット</h3>
+      <p>掘った跡・封鎖・旗・金庫・しおりを全部消して、地雷の配置も作り直す。<br>
+      💎・オーブ・チケット・連続日数・実績はそのまま残る。</p>
+      <button class="btn wide" id="boardreset">盤面を作り直す</button>
+    </div>
+    <div class="sec">データ</div>
+    <div class="card">
+      <p id="vertxt"></p>
+      <button class="btn sub wide" id="export">JSONで書き出し</button>
+      <button class="btn danger wide" id="reset">全データを消す</button>
+    </div>
+  </div>
+</div>
+
+<div id="upd"><span>✨ 新しい版があります</span>
+  <button class="later" id="updno">あとで</button><button id="updgo">更新</button></div>
+
+<div id="dlg"><div class="dbox" id="dbox"></div></div>
+<div id="stamp"></div>
+
+<script>
+(function(){
+'use strict';
+
+/* ======================= 定数 ======================= */
+var DENSITY=180, SAFE_R=2, FLOOD_CAP=400;
+var GACHA1=100, GACHA10=1000, PITY=20;
+var MIN_CS=6, MAX_CS=72, OVERVIEW=18;
+var LONG_MS=500, TAP_PX=11;
+var VAULT_R=2, CHAL_R=7;          // 金庫5×5 / チャレンジ15×15
+var VAULT_LAT=30;                 // 金庫の生成格子
+var TICKET_BASE=0.0005, BELL_STEP=0.001;
+
+/* ======================= 属性20種 ======================= */
+function typhoon(){
+  var out='', n=60, SPAN=272, HOLE=11, TT=0.68;
+  function u(t){ return t<=TT?0:(t-TT)/(1-TT); }
+  function Rad(t){ return 27+11*Math.pow(u(t),1.3); }
+  function Rin(t){ return HOLE+(Rad(t)-HOLE)*Math.pow(u(t),0.6); }
+  for(var k=0;k<2;k++){
+    var d='';
+    for(var i=0;i<=n;i++){ var t=i/n,a=(k*180+SPAN*t)*Math.PI/180;
+      d+=(i?'L':'M')+(50+Rad(t)*Math.cos(a)).toFixed(1)+' '+(50+Rad(t)*Math.sin(a)).toFixed(1); }
+    for(var i=n;i>=0;i--){ var t=i/n,a=(k*180+SPAN*t)*Math.PI/180;
+      d+='L'+(50+Rin(t)*Math.cos(a)).toFixed(1)+' '+(50+Rin(t)*Math.sin(a)).toFixed(1); }
+    out+='<path d="'+d+'Z"/>';
+  }
+  return out;
+}
+var SPARK='M0-24 5-8 19-15 10-2 24 3 8 7 14 22 1 11-6 24-6 8-21 13-11 0-24-7-8-9-15-22-2-10Z';
+
+var ORBS=[
+ {id:'fire', n:'ファイア', d:'#B3200F', l:'#F4907F', cnt:'cold', use:'dir',
+  e:'選んだ方向へ5マス採掘。その5マスにマインがあれば、それぞれの周囲3×3も採掘',
+  s:'<path d="M50 12c4 10 11 15 15 23 4 7 6 13 6 20 0 15-9 27-21 27s-21-12-21-27c0-8 4-15 8-21-1 7 1 12 5 15-5-15 4-25 8-37z"/>'
+   +'<path d="M31 40c-4 6-7 13-7 20 0 5 2 10 4 14-6-5-11-13-11-21 0-4 1-8 4-12z"/>'
+   +'<path d="M69 40c4 6 7 13 7 20 0 5-2 10-4 14 6-5 11-13 11-21 0-4-1-8-4-12z"/>'},
+ {id:'water', n:'ウォーター', d:'#0A4FA0', l:'#6FB9F2', cnt:'flare2', use:'cell',
+  e:'下へ向かってマインを避けながら蛇行し、10マス採掘',
+  s:'<path d="M50 14c12 17 21 27 21 38a21 21 0 11-42 0c0-11 9-21 21-38z"/>'
+   +'<path d="M40 56a10 10 0 007 13" stroke="#6FB9F2" stroke-width="5" fill="none" stroke-linecap="round"/>'},
+ {id:'plasma', n:'プラズマ', d:'#A07000', l:'#FFE066', cnt:'black', use:'dir',
+  e:'選んだ方向へ12〜15マス採掘（長さはランダム）',
+  s:'<path d="M59 18 33 56h13l-5 26 25-36H53z"/>'},
+ {id:'leaf', n:'リーフ', d:'#4A8F17', l:'#B6E86A', cnt:null, use:'choice',
+  e:'200マスのあいだ💎の出現率3倍、またはチケット確率UP（選択）',
+  s:'<path d="M30 72C30 46 46 28 74 24c3 29-14 48-44 48z"/><path d="M34 74c8-14 18-24 30-30" stroke="#4A8F17" stroke-width="5" fill="none" stroke-linecap="round"/>'},
+ {id:'dark', n:'ダーク', d:'#2A0D4A', l:'#8A63BD', cnt:null, use:'cell',
+  e:'5×5の未採掘マスのうち40%をランダムに採掘',
+  s:'<path d="M63 22a28 28 0 10 0 56 33 33 0 010-56z"/><circle cx="60" cy="34" r="4"/><circle cx="68" cy="52" r="3"/>'},
+ {id:'hammer', n:'ハンマー', d:'#5C3D33', l:'#C8A28E', cnt:'normal', use:'cell',
+  e:'3×3を採掘',
+  s:'<rect x="24" y="26" width="52" height="22" rx="5"/><rect x="45" y="46" width="10" height="34" rx="4"/>'},
+ {id:'hurricane', n:'ハリケーン', d:'#16A399', l:'#8FE5DC', cnt:'flare', use:'cell',
+  e:'5×5の外周16マスを採掘（中心3×3は残る）', s: typhoon()},
+ {id:'poison', n:'ポイズン', d:'#5B1480', l:'#CBA0E0', cnt:null, use:'poison',
+  e:'3マス選ぶ。以降あなたが採掘するたび、3箇所それぞれが隣接1マスを自動採掘（各7回）',
+  s:'<path d="M50 22c-14 0-24 10-24 23 0 8 4 14 9 17v8c0 3 2 5 5 5h20c3 0 5-2 5-5v-8c5-3 9-9 9-17 0-13-10-23-24-23z"/>'
+   +'<circle cx="41" cy="45" r="5" fill="#CBA0E0"/><circle cx="59" cy="45" r="5" fill="#CBA0E0"/>'
+   +'<rect x="46" y="57" width="8" height="10" rx="2" fill="#CBA0E0"/>'},
+ {id:'ice', n:'アイス', d:'#1577B5', l:'#BDEEFB', cnt:'flare', use:'ice',
+  e:'1マスを氷にし、氷をタップすると周囲へ広がる（4連まで）。最後にまとめて採掘',
+  s:'<g stroke="#1577B5" stroke-width="6" stroke-linecap="round"><path d="M50 20v60M26 35l48 30M74 35 26 65"/>'
+   +'<path d="M50 32l-7-7M50 32l7-7M50 68l-7 7M50 68l7 7" stroke-width="5"/></g>'},
+ {id:'sword', n:'ソード', d:'#13572A', l:'#86C79A', cnt:'normal', use:'dir',
+  e:'選んだ方向へ、1列目3マス・2列目5マスを扇状に採掘',
+  s:'<path d="M50 18 60 32v30H40V32z"/><rect x="28" y="62" width="44" height="9" rx="4"/><rect x="45" y="71" width="10" height="13" rx="4"/>'},
+ {id:'stone', n:'ストーン', d:'#4E342E', l:'#BCAAA4', cnt:'thunder', use:'choice',
+  e:'ダイヤチャレンジの復活権、または次に踏むマインの封鎖を1マスに抑える（選択）',
+  s:'<path d="M30 58 42 26h24l12 26-10 26H38z"/>'
+   +'<g stroke="#BCAAA4" stroke-width="4" fill="none" stroke-linecap="round">'
+   +'<path d="M42 28 52 44 70 38"/><path d="M52 44 48 78"/><path d="M52 44 34 56"/></g>'
+   +'<path d="M62 60l6 4-3 7z" fill="#BCAAA4"/>'},
+ {id:'dynamite', n:'ダイナマイト', d:'#111A42', l:'#6E7BAE', cnt:null, use:'arm',
+  e:'次の1手だけ有効。そこでマインを踏めば封鎖されず5×5か7×7が全採掘される。踏まなければ不発',
+  s:'<circle cx="47" cy="59" r="25"/><rect x="52" y="24" width="10" height="18" rx="5" transform="rotate(30 57 33)"/>'
+   +'<path d="M66 28c9-4 11-13 6-16" stroke="#111A42" stroke-width="5" fill="none" stroke-linecap="round"/>'
+   +'<path d="M36 50a14 14 0 018-8" stroke="#6E7BAE" stroke-width="5" fill="none" stroke-linecap="round"/>'},
+ {id:'beam', n:'ビーム', d:'#E65100', l:'#FFC183', cnt:'black', use:'dir',
+  e:'選んだ方向へ10マス。マインに当たると垂直方向へ屈折してさらに10マス',
+  s:'<g transform="translate(56 38) scale(.95)"><path d="'+SPARK+'"/></g>'
+   +'<g transform="translate(32 62) scale(.62)"><path d="'+SPARK+'"/></g>'
+   +'<g transform="translate(62 74) scale(.45)"><path d="'+SPARK+'"/></g>'},
+ {id:'ghost', n:'ゴースト', d:'#4E6B7A', l:'#D3E6EE', cnt:'black2', use:'inst',
+  e:'10秒間、採掘可能な辺縁のマインが見える',
+  s:'<path d="M50 20c-14 0-24 11-24 25v33l8-7 8 7 8-7 8 7 8-7 8 7V45c0-14-10-25-24-25z"/>'
+   +'<circle cx="42" cy="44" r="5" fill="#D3E6EE"/><circle cx="58" cy="44" r="5" fill="#D3E6EE"/>'},
+ {id:'beast', n:'ビースト', d:'#7A4200', l:'#E0A96D', cnt:null, use:'inst',
+  e:'最も近い未発見の💎金庫の位置を表示する',
+  s:'<ellipse cx="30" cy="43" rx="8" ry="10.5" transform="rotate(-20 30 43)"/>'
+   +'<ellipse cx="43" cy="32" rx="8" ry="11" transform="rotate(-8 43 32)"/>'
+   +'<ellipse cx="58" cy="32" rx="8" ry="11" transform="rotate(8 58 32)"/>'
+   +'<ellipse cx="71" cy="43" rx="8" ry="10.5" transform="rotate(20 71 43)"/>'
+   +'<path d="M50 51c13 0 23 9 23 18s-10 13-23 13-23-4-23-13 10-18 23-18z"/>'},
+ {id:'ninja', n:'ニンジャ', d:'#15191D', l:'#7F8D96', cnt:'normal', use:'cell',
+  e:'十字に各方向2マス、計9マスを採掘',
+  s:'<path d="M50 16 59 41 84 50 59 59 50 84 41 59 16 50 41 41z"/><circle cx="50" cy="50" r="7" fill="#7F8D96"/>'},
+ {id:'sky', n:'スカイ', d:'#7E99AD', l:'#FFFFFF', cnt:'flare', use:'cell',
+  e:'唯一、隣接縛りを無視できるオーブ。真上3〜5マス離れた場所の3×3を採掘し、新しい拠点を作る',
+  s:'<path d="M32 70a14 14 0 010-28 19 19 0 0136-6 13 13 0 013 34z"/>'},
+ {id:'shield', n:'シールド', d:'#16206B', l:'#9FA8DA', cnt:'all', use:'arm',
+  e:'3回の採掘操作のあいだ、マインを踏んでも無効化する',
+  s:'<path d="M50 18 76 28v22c0 16-11 27-26 32-15-5-26-16-26-32V28z"/>'
+   +'<path d="M50 30v40" stroke="#9FA8DA" stroke-width="5"/><path d="M32 42h36" stroke="#9FA8DA" stroke-width="5"/>'},
+ {id:'doctor', n:'ドクター', d:'#0A7A5F', l:'#7FE0C0', cnt:'any', use:'seal',
+  e:'どの封鎖にも効く。ノーマルは全解除、他は突破口を開ける',
+  s:'<g transform="rotate(-48 50 50)"><rect x="32" y="16" width="36" height="68" rx="18"/>'
+   +'<path d="M39 50h22v13a11 11 0 01-11 11 11 11 0 01-11-11z" fill="#7FE0C0"/>'
+   +'<path d="M32 50h36" stroke="#0A7A5F" stroke-width="6"/></g>'},
+ {id:'bell', n:'ベル', d:'#9A6B00', l:'#FFD98A', cnt:null, use:'inst',
+  e:'1個使うごとにガチャ券の出現率が+0.1%／マス（累積、券を掘り当てるとリセット）',
+  s:'<path d="M50 20a7 7 0 017 7c11 4 15 14 15 26 0 9 3 13 5 16H23c2-3 5-7 5-16 0-12 4-22 15-26a7 7 0 017-7z"/>'
+   +'<ellipse cx="50" cy="78" rx="8" ry="6"/>'}
+];
+var OB={}; ORBS.forEach(function(o){ OB[o.id]=o; });
+
+/* マイン5種 → 解除できる属性 */
+var MINES={
+  normal:{n:'ノーマル', p:60, by:['hammer','sword','ninja'], dia:120},
+  flare: {n:'フレア',   p:10, by:['ice','water','sky','hurricane']},
+  cold:  {n:'コールド', p:10, by:['fire']},
+  thunder:{n:'サンダー',p:10, by:['stone','water']},
+  black: {n:'ブラック', p:10, by:['beam','plasma']}
+};
+
+var TRACKS=[
+ {id:'streak', nm:'連続ログイン', ic:'🔥', u:'日', rep:true, get:function(){return S.streak;},
+  tiers:[[3,5],[7,10],[14,15],[30,30],[60,50],[100,80],[200,150],[365,300]],
+  rec:{from:365,step:30,dia:30}},
+ {id:'vault', nm:'攻略した💎金庫', ic:'💎', u:'個', rep:false, get:function(){return S.vaultCleared||0;},
+  tiers:[[1,10],[3,25],[5,50],[10,100],[20,200],[50,400]], rec:{from:50,step:10,dia:60}},
+ {id:'safe', nm:'無事故記録', ic:'🛡️', u:'マス', rep:true, get:function(){return S.safeStreak;},
+  tiers:[[100,2],[250,5],[500,10],[1000,20],[2000,40],[3500,70],[5000,120]],
+  rec:{from:5000,step:2500,dia:60}},
+ {id:'dug', nm:'累計開放マス', ic:'⛏️', u:'マス', rep:false, get:function(){return S.totalOpened;},
+  tiers:[[1000,20],[5000,40],[20000,80],[50000,150],[100000,300]], rec:{from:100000,step:50000,dia:100}}
+];
+
+/* ======================= 状態 ======================= */
+var S, CS=46, camX=-160, camY=-200, mode='dig';
+
+function fresh(){
+  var orbs={}; ORBS.forEach(function(o){ orbs[o.id]=30; });   // テスト用：全オーブ30個
+  return {
+    v:3, seed:(Math.random()*1e9)|0, dia:3000,
+    opened:{}, flags:{}, known:{}, seal:{}, blasts:{}, nextBlast:1,
+    marks:{}, orbs:orbs, t1:3, t10:1,
+    vaults:{},
+    dayKey:null, vaultCleared:0,
+    lastLogin:null, streak:0,
+    totalOpened:0, safeStreak:0, maxSafe:0,
+    pity:0, reached:{}, safeHit:{}, pending:{}, claimCount:{}, ever:{},
+    shieldLeft:0, dynaLeft:0, stoneArmed:false, revive:0,
+    leafLeft:0, leafMode:'dia', bell:0, poison:[],
+    skipGacha:false, longMs:500
+  };
+}
+function load(){
+  try{ var r=localStorage.getItem('habitminer_v3');
+    if(r){ var o=JSON.parse(r), f=fresh();
+      for(var k in f) if(!(k in o)) o[k]=f[k];
+      ORBS.forEach(function(x){ if(o.orbs[x.id]===undefined) o.orbs[x.id]=0; });
+      return o; }
+  }catch(e){}
+  return fresh();
+}
+/* 保存。採掘のたびに全書き換えすると重くなるので、普段は saveSoon() でまとめる。
+   大事な瞬間（マイン・金庫・ガチャ・オーブ使用など）は save() で即座に書く。 */
+var saveT=0, saveWarned=false;
+function save(){
+  if(saveT){ clearTimeout(saveT); saveT=0; }
+  try{ localStorage.setItem('habitminer_v3',JSON.stringify(S)); }
+  catch(e){
+    if(!saveWarned){
+      saveWarned=true;
+      toast('⚠️ これ以上セーブできない<br><small style="color:#a894c7">端末の保存容量が上限。設定からJSONを書き出しておこう</small>');
+    }
+  }
+}
+function saveSoon(){
+  if(saveT) return;
+  saveT=setTimeout(function(){
+    saveT=0;
+    /* 指が触れている間は書かない（ドラッグ中に固まるのを防ぐ） */
+    if(pt && Object.keys(pt).length){ saveSoon(); return; }
+    if(window.requestIdleCallback) requestIdleCallback(save,{timeout:1200});
+    else save();
+  },1800);
+}
+/* 閉じる・裏に回る瞬間は取りこぼさないよう必ず書く */
+document.addEventListener('visibilitychange',function(){ if(document.hidden) save(); });
+window.addEventListener('pagehide',function(){ save(); });
+window.addEventListener('blur',function(){ save(); });
+S=load();
+
+/* ======================= ユーティリティ ======================= */
+function $(s){ return document.querySelector(s); }
+function $$(s){ return Array.prototype.slice.call(document.querySelectorAll(s)); }
+function key(x,y){ return x+','+y; }
+function today(){ var d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function dayDiff(a,b){ return a?Math.round((new Date(b)-new Date(a))/86400000):999; }
+function esc(s){ return String(s).replace(/[<>&"]/g,function(c){return ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'})[c];}); }
+function fmt(n){ return Math.round(n).toLocaleString('ja-JP'); }
+function inSafe(x,y){ return Math.abs(x)<=SAFE_R && Math.abs(y)<=SAFE_R; }
+function orbSvg(o,sz){
+  return '<svg viewBox="0 0 100 100"'+(sz?' width="'+sz+'" height="'+sz+'"':'')+'>'
+   +'<circle cx="50" cy="50" r="47" fill="'+o.d+'"/><circle cx="50" cy="50" r="39" fill="'+o.l+'"/>'
+   +'<path d="M26 32a30 30 0 0124-14" stroke="rgba(255,255,255,.55)" stroke-width="6" fill="none" stroke-linecap="round"/>'
+   +'<g fill="'+o.d+'">'+o.s+'</g></svg>';
+}
+var toastT;
+function toast(m){
+  var t=$('#toast'); t.innerHTML=m; t.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(function(){ t.classList.remove('show'); },2400);
+}
+function dlg(ic,title,body,buttons){
+  var h='<div class="dic">'+ic+'</div><h3>'+title+'</h3><p>'+body+'</p><div class="row">';
+  buttons.forEach(function(b,i){ h+='<button class="btn'+(b.sub?' sub':'')+'" data-b="'+i+'"'+(b.dis?' disabled':'')+'>'+b.t+'</button>'; });
+  $('#dbox').innerHTML=h+'</div>'; $('#dlg').classList.add('show');
+  $$('#dbox [data-b]').forEach(function(el){
+    el.onclick=function(){ $('#dlg').classList.remove('show'); var f=buttons[+el.dataset.b].f; if(f) f(); };
+  });
+}
+function confirmDlg(ic,title,body,ok,cb){
+  dlg(ic,title,body,[{t:'やめる',sub:true},{t:ok,f:cb}]);
+}
+
+/* ======================= 盤面（座標から計算） ======================= */
+function hsh(x,y,salt){
+  var h=(S.seed+salt*2654435761) ^ Math.imul(x,374761393) ^ Math.imul(y,668265263);
+  h=Math.imul(h^(h>>>13),1274126177);
+  return (h^(h>>>16))>>>0;
+}
+function isMine(x,y){ return inSafe(x,y)?false:(hsh(x,y,0)%1000)<DENSITY; }
+function mineType(x,y){
+  var h=hsh(x,y,7)%100;
+  return h<60?'normal':h<70?'flare':h<80?'cold':h<90?'thunder':'black';
+}
+function adj(x,y){
+  var n=0;
+  for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+    if(dx===0&&dy===0) continue;
+    if(isMine(x+dx,y+dy)) n++;
+  }
+  return n;
+}
+function reachable(x,y){
+  if(inSafe(x,y)) return true;
+  for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+    if(dx===0&&dy===0) continue;
+    var k=key(x+dx,y+dy), sid=S.seal[k];
+    if(S.opened[k]!==undefined && !sid) return true;
+    if(sid && (S.blasts[sid]||{}).see) return true;   // 👻で透かした封鎖は足場になる
+  }
+  return false;
+}
+/* 埋蔵物（💎とオーブ）。チケットは別抽選 */
+function buried(x,y){
+  if(inSafe(x,y)) return null;
+  var h=hsh(x,y,99), r=h%10000;
+  /* 💎 0.3%（リーフ中は0.9%）／オーブ 0.4%。
+     帯を範囲の両端に分けてあるので、リーフで💎が増えてもオーブは減らない */
+  var diaRate = S.leafLeft>0 && S.leafMode==='dia' ? 90 : 30;
+  if(r<diaRate) return {t:'dia', v:1+(h>>>7)%2};
+  if(r>=9960) return {t:'orb', v:ORBS[(h>>>5)%ORBS.length].id};
+  return null;
+}
+/* 💎金庫：格子ごとに1つ */
+function vaultAt(bx,by){
+  var h=hsh(bx,by,1234);
+  if(h%100>=70) return null;
+  var cx=bx*VAULT_LAT+CHAL_R+(h>>>7)%(VAULT_LAT-CHAL_R*2);
+  var cy=by*VAULT_LAT+CHAL_R+(h>>>15)%(VAULT_LAT-CHAL_R*2);
+  if(Math.abs(cx)<=CHAL_R+SAFE_R && Math.abs(cy)<=CHAL_R+SAFE_R) return null;
+  return [cx,cy];
+}
+function vaultsTouching(x,y){                  // そのマスが金庫orチャレンジ範囲に入る金庫
+  var out=[], bx=Math.floor(x/VAULT_LAT), by=Math.floor(y/VAULT_LAT);
+  for(var i=-1;i<=1;i++) for(var j=-1;j<=1;j++){
+    var v=vaultAt(bx+i,by+j);
+    if(v && Math.abs(x-v[0])<=CHAL_R && Math.abs(y-v[1])<=CHAL_R) out.push(v);
+  }
+  return out;
+}
+function vpeek(v){ return S.vaults[key(v[0],v[1])]; }
+function vaultsInView(x0,y0,x1,y1){
+  var out=[], b0=Math.floor(x0/VAULT_LAT)-1, b1=Math.floor(x1/VAULT_LAT)+1;
+  var c0=Math.floor(y0/VAULT_LAT)-1, c1=Math.floor(y1/VAULT_LAT)+1;
+  for(var i=b0;i<=b1;i++) for(var j=c0;j<=c1;j++){
+    var v=vaultAt(i,j); if(v) out.push(v);
+  }
+  return out;
+}
+function vst(v){
+  var k=key(v[0],v[1]);
+  if(!S.vaults[k]) S.vaults[k]={f:0,c:0,ch:0};   // found / cleared / challenge(0未,1中,2成功,3失敗)
+  return S.vaults[k];
+}
+
+/* ======================= 封鎖 ======================= */
+function sealCells(t,x,y){
+  var out=[];
+  if(t==='normal'||t==='black'){
+    for(var dx=-2;dx<=2;dx++) for(var dy=-2;dy<=2;dy++) out.push([x+dx,y+dy]);
+  }else if(t==='flare'){
+    for(var dx=-3;dx<=3;dx++) for(var dy=-3;dy<=3;dy++)
+      if(hsh(x+dx*31,y+dy*17,555)%2===0) out.push([x+dx,y+dy]);
+  }else if(t==='cold'){
+    var hor=hsh(x,y,11)%2===0;
+    for(var i=-5;i<=5;i++) out.push(hor?[x+i,y]:[x,y+i]);
+  }else if(t==='thunder'){
+    out.push([x,y]);
+    for(var i=1;i<=4;i++){ out.push([x+i,y]); out.push([x-i,y]); out.push([x,y+i]); out.push([x,y-i]); }
+  }
+  return out;
+}
+function blast(x,y,forced){
+  var t=forced||mineType(x,y);
+  if(S.stoneArmed && t==='normal'){ S.stoneArmed=false; t='pin'; }
+  var id=S.nextBlast++, n=0;
+  var cells = t==='pin' ? [[x,y]] : sealCells(t,x,y);
+  var keepNum = (t==='normal'||t==='pin');
+  for(var i=0;i<cells.length;i++){
+    var gx=cells[i][0], gy=cells[i][1], k=key(gx,gy);
+    if(inSafe(gx,gy)) continue;
+    if(S.seal[k]) continue;
+    S.seal[k]=id; delete S.flags[k]; delete S.known[k];
+    if(!keepNum) delete S.opened[k];
+    n++;
+  }
+  if(t==='thunder'){                                   // 周囲の旗が吹き飛ぶ
+    for(var i=0;i<cells.length;i++)
+      for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++)
+        delete S.flags[key(cells[i][0]+dx,cells[i][1]+dy)];
+  }
+  S.blasts[id]={t:t,x:x,y:y,n:n};
+  S.safeStreak=0; S.safeHit={};
+  return {id:id,t:t,n:n};
+}
+function blastCells(id){
+  var b=S.blasts[id]; if(!b) return [];
+  var out=[], R=6;
+  for(var dx=-R;dx<=R;dx++) for(var dy=-R;dy<=R;dy++){
+    var k=key(b.x+dx,b.y+dy);
+    if(S.seal[k]===id) out.push([b.x+dx,b.y+dy]);
+  }
+  return out;
+}
+function unseal(cells,id){
+  var b=S.blasts[id], keep=(b.t==='normal'||b.t==='pin');
+  cells.forEach(function(c){
+    var k=key(c[0],c[1]);
+    if(S.seal[k]!==id) return;
+    delete S.seal[k];
+    if(isMine(c[0],c[1])) S.flags[k]=1;
+    else if(!keep) delete S.opened[k];
+  });
+  var left=blastCells(id).length;
+  if(!left) delete S.blasts[id];
+  else S.blasts[id].n=left;
+}
+function clearSeal(id){ unseal(blastCells(id),id); }
+
+/* ======================= 採掘 ======================= */
+function gain(got,x,y){
+  if(got.dia){ S.dia+=got.dia; }
+  if(got.orbs) for(var k in got.orbs) S.orbs[k]+=got.orbs[k];
+}
+/* 掘ったマスから中身が浮かび上がる */
+function sparkAt(gx,gy,html){
+  var bd=$('#board'), d=document.createElement('div');
+  d.className='spark'; d.innerHTML=html||'✨';
+  d.style.left=(gx*CS-camX+CS/2)+'px'; d.style.top=(gy*CS-camY+CS/2)+'px';
+  bd.appendChild(d);
+  setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); },1300);
+}
+/* 左下に積まれて流れていく獲得表示 */
+function loot(icon,name,amt,rare){
+  var w=$('#loot'), d=document.createElement('div');
+  d.className='loot'+(rare?' rare':'');
+  d.innerHTML=icon+'<span>'+name+'</span>'+(amt?'<b>'+amt+'</b>':'');
+  w.appendChild(d);
+  while(w.children.length>4) w.removeChild(w.firstChild);
+  setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); },3200);
+}
+function pop(got,x,y,html){ (got.pops=got.pops||[]).push([x,y,html]); }
+function ticketRoll(){
+  var p=TICKET_BASE+S.bell*BELL_STEP;
+  if(Math.random()<p*0.1){ S.t10++; S.bell=0; return 't10'; }
+  if(Math.random()<p){ S.t1++; S.bell=0; return 't1'; }
+  return null;
+}
+/* 1マス開ける（共通）。マインなら旗を立てて false */
+function openOne(x,y,got,noTicket){
+  var k=key(x,y);
+  if(S.opened[k]!==undefined||S.seal[k]) return false;
+  if(isMine(x,y)){ S.flags[k]=1; return false; }
+  S.opened[k]=adj(x,y); delete S.flags[k];
+  S.totalOpened++; S.safeStreak++;
+  got.dug=got.dug||[]; got.dug.push([x,y]);
+  if(S.leafLeft>0) S.leafLeft--;
+  var b=buried(x,y);
+  if(b){
+    if(b.t==='dia'){ got.dia=(got.dia||0)+b.v; pop(got,x,y,'💎'); }
+    else{
+      got.orbs=got.orbs||{}; got.orbs[b.v]=(got.orbs[b.v]||0)+1;
+      pop(got,x,y,orbSvg(OB[b.v]));
+    }
+  }
+  if(!noTicket){
+    var tk=ticketRoll();
+    if(tk){ got.tix=tk; pop(got,x,y, tk==='t10'?'🏅':'🎫'); }
+  }
+  return true;
+}
+function finishGot(got){
+  gain(got);
+  /* 掘ったマスから浮かび上がらせる（視線は指元にあるので、そこで知らせる） */
+  if(got.pops) got.pops.forEach(function(c,i){
+    setTimeout(function(){ sparkAt(c[0],c[1],c[2]); }, i*90);
+  });
+  /* 左下に流れる獲得表示 */
+  if(got.dia) loot('<span class="ic">💎</span>','ダイヤ','+'+got.dia);
+  if(got.orbs) for(var oid in got.orbs)
+    loot(orbSvg(OB[oid]), OB[oid].n+'のオーブ', '+'+got.orbs[oid]);
+  if(got.tix){
+    var t10=got.tix==='t10';
+    loot('<span class="ic">'+(t10?'🏅':'🎫')+'</span>', t10?'黄金のガチャ券':'ガチャ券','+1',true);
+    if(t10) toast('🏅 黄金のガチャ券を掘り当てた！');
+  }
+  if(S.safeStreak>S.maxSafe) S.maxSafe=S.safeStreak;
+  checkVault(got.dug); checkTracks(); render(); hud();
+  if(got.tix||got.dia) save(); else saveSoon();
+}
+
+function dig(x,y){
+  var k=key(x,y);
+  if(S.seal[k]){ askSeal(S.seal[k],x,y); return; }
+  if(S.opened[k]!==undefined||S.flags[k]) return;
+  if(!reachable(x,y)){ toast('ここは届かない<br><small style="color:#a894c7">開けたマスの隣から掘り進もう</small>'); return; }
+
+  if(isMine(x,y)){
+    if(S.shieldLeft>0){ S.shieldLeft=0; S.flags[k]=1; fxRing(x,y,OB.shield.l,2.6,620); toast('🛡 シールドがマインを防いだ'); step(); render(); hud(); save(); return; }
+    if(S.dynaLeft>0){
+      S.dynaLeft=0;
+      var R=Math.random()<0.5?2:3, got={};
+      for(var dx=-R;dx<=R;dx++) for(var dy=-R;dy<=R;dy++){
+        var gx=x+dx, gy=y+dy, kk=key(gx,gy);
+        if(S.seal[kk]) continue;
+        if(isMine(gx,gy)){ S.flags[kk]=1; }
+        else if(S.opened[kk]===undefined){ S.opened[kk]=adj(gx,gy); delete S.flags[kk]; S.totalOpened++; S.safeStreak++;
+          got.dug=got.dug||[]; got.dug.push([gx,gy]); }
+      }
+      fxRing(x,y,'#FFAB91',R+1.6,760); fxRing(x,y,'#6E7BAE',R+0.8,560); fxFlash('#FFAB91',420);
+      toast('🧨 ダイナマイトが起爆！ '+(R*2+1)+'×'+(R*2+1)+'を吹き飛ばした');
+      step(); finishGot(got); return;
+    }
+    var r=blast(x,y);
+    var m=MINES[r.t];
+    fxRing(x,y,({normal:'#E6E2ED',flare:'#D9541F',cold:'#9FE3F7',thunder:'#FFD84D',black:'#8b79b5',pin:'#BCAAA4'})[r.t]||'#fff',3.2,700);
+    if(r.t==='pin') toast('🪨 ストーンが衝撃を受け止めた<br><small style="color:#a894c7">封鎖は1マスだけ</small>');
+    else toast('💥 '+m.n+'マイン！ '+r.n+'マスが封鎖された<br><small style="color:#a894c7">'
+      +m.by.map(function(i){return OB[i].n;}).join('・')+(r.t==='normal'?'・💎':'')+'で解除できる</small>');
+    failChallenge(x,y);
+    step(); render(); hud(); save(); return;
+  }
+
+  var q=[[x,y]], seen={}, cnt=0, got={};
+  seen[k]=1;
+  while(q.length && cnt<FLOOD_CAP){
+    var c=q.shift(), cx=c[0], cy=c[1], ck=key(cx,cy);
+    if(S.opened[ck]!==undefined||S.seal[ck]||isMine(cx,cy)) continue;
+    openOne(cx,cy,got); cnt++;
+    if(S.opened[ck]===0){
+      for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+        if(dx===0&&dy===0) continue;
+        var nk=key(cx+dx,cy+dy);
+        if(!seen[nk]){ seen[nk]=1; q.push([cx+dx,cy+dy]); }
+      }
+    }
+  }
+  step(); finishGot(got);
+}
+/* 1回の採掘操作が終わるたび */
+function step(){
+  if(S.shieldLeft>0) S.shieldLeft--;
+  if(S.dynaLeft>0) S.dynaLeft--;
+  if(S.poison.length){
+    var got={};
+    /* 前回の採掘で打ち止めになった分は、この1回で枠線ごと消える */
+    S.poison=S.poison.filter(function(p){ return !p.done; });
+    S.poison.forEach(function(p){
+      if(p.left<=0) return;
+      /* 自分の広がりから一番近い未採掘の安全マスを探す（開放済みの地面は通り抜ける） */
+      var q=p.cells.slice(), seen={}, best=null, guard=0;
+      q.forEach(function(c){ seen[key(c[0],c[1])]=1; });
+      while(q.length && !best && guard++<400){
+        var c=q.shift();
+        for(var dx=-1;dx<=1 && !best;dx++) for(var dy=-1;dy<=1;dy++){
+          if(dx===0&&dy===0) continue;
+          var gx=c[0]+dx, gy=c[1]+dy, kk=key(gx,gy);
+          if(seen[kk]) continue; seen[kk]=1;
+          if(S.seal[kk]) continue;
+          if(S.opened[kk]!==undefined){ q.push([gx,gy]); continue; }
+          if(isMine(gx,gy)) continue;
+          best=[gx,gy]; break;
+        }
+      }
+      if(best){ openOne(best[0],best[1],got); p.cells.push(best); p.left--; }
+      else p.left=0;
+      if(p.left<=0) p.done=1;        // 枠線は次の採掘まで残す
+    });
+    if(got.dug) finishGot(got);
+  }
+  updateBar();
+}
+
+/* ======================= 💎金庫 / チャレンジ ======================= */
+function areaDone(cx,cy,R){
+  for(var dx=-R;dx<=R;dx++) for(var dy=-R;dy<=R;dy++){
+    var gx=cx+dx, gy=cy+dy, k=key(gx,gy);
+    if(isMine(gx,gy)) continue;
+    if(S.opened[k]===undefined||S.seal[k]) return false;
+  }
+  return true;
+}
+function unopenedRate(cx,cy){
+  var tot=0, un=0;
+  for(var dx=-CHAL_R;dx<=CHAL_R;dx++) for(var dy=-CHAL_R;dy<=CHAL_R;dy++){
+    if(Math.abs(dx)<=VAULT_R&&Math.abs(dy)<=VAULT_R) continue;
+    tot++;
+    var k=key(cx+dx,cy+dy);
+    if(S.opened[k]===undefined&&!S.seal[k]) un++;
+  }
+  return tot? un/tot : 0;
+}
+/* 新しく開いたマスの周辺だけを見る（全マス走査はしない） */
+function checkVault(cells){
+  if(!cells||!cells.length) return;
+  var seenV={};
+  cells.forEach(function(c){
+    vaultsTouching(c[0],c[1]).forEach(function(v){
+      var vk=key(v[0],v[1]); if(seenV[vk]) return; seenV[vk]=1;
+      var inCore = Math.abs(c[0]-v[0])<=VAULT_R && Math.abs(c[1]-v[1])<=VAULT_R;
+      var st=vpeek(v);
+      if(inCore && (!st||!st.f)){
+        st=vst(v); st.f=1;
+        toast('💎 金庫を発見した！<br><small style="color:#a894c7">5×5を攻略すると💎がもらえる</small>');
+      }
+      if(!st) return;
+      if(!st.c && areaDone(v[0],v[1],VAULT_R)){ st.c=1; S.dia+=50; S.vaultCleared=(S.vaultCleared||0)+1; offerChallenge(v); }
+      if(st.ch===1 && areaDone(v[0],v[1],CHAL_R)) winChallenge(v);
+    });
+  });
+}
+function offerChallenge(v){
+  var R=unopenedRate(v[0],v[1]), rw=Math.round(20+180*R*R);
+  vst(v).rw=rw;
+  dlg('💎','金庫を攻略した！',
+    '<b style="color:#4cc9f0">+50💎</b><br><br>'
+   +'この金庫を囲む <b>15×15</b> をノーミスで攻略すると<br>'
+   +'<b style="color:#ffd60a">+'+rw+'💎</b><br><br>'
+   +'未採掘率 '+Math.round(R*100)+'%　／　マインを1つでも踏むと失敗'
+   +(S.revive?'<br><small style="color:#a894c7">🪨 復活権を'+S.revive+'個所持</small>':''),
+   [{t:'やめておく',sub:true,f:function(){ vst(v).ch=3; save(); }},
+    {t:'挑戦する',f:function(){ vst(v).ch=1; toast('🏆 ダイヤチャレンジ開始！'); render(); save(); }}]);
+}
+function failChallenge(x,y){
+  for(var k in S.vaults){
+    var st=S.vaults[k]; if(st.ch!==1) continue;
+    var p=k.split(','), cx=+p[0], cy=+p[1];
+    if(Math.abs(x-cx)>CHAL_R||Math.abs(y-cy)>CHAL_R) continue;
+    if(S.revive>0){
+      S.revive--;
+      toast('🪨 復活権を使った！ チャレンジ続行');
+    }else{
+      st.ch=3;
+      toast('💔 ダイヤチャレンジ失敗…');
+    }
+  }
+}
+function winChallenge(v){
+  var st=vst(v); st.ch=2;
+  S.dia+=st.rw||20;
+  showStamp('CLEAR','+'+(st.rw||20)+'💎');
+  toast('🏆 ダイヤチャレンジ成功！ +'+(st.rw||20)+'💎');
+  save();
+}
+
+/* ======================= オーブの効果 ======================= */
+var DIRS={up:[0,-1], right:[1,0], down:[0,1], left:[-1,0]};
+var curDir='right';
+function digList(list,got){ list.forEach(function(c){ openOne(c[0],c[1],got); }); }
+
+/* タップしたマスを1マス目として数える */
+function line(x,y,d,len){
+  var out=[];
+  for(var i=0;i<len;i++) out.push([x+d[0]*i, y+d[1]*i]);
+  return out;
+}
+function useOrb(id,ctx){
+  var got={}, o=OB[id];
+  S.orbs[id]--;
+  if(id==='fire'){
+    var d=DIRS[curDir], cells=line(ctx.x,ctx.y,d,5);
+    digList(cells,got);
+    fxWave(cells,o.l);
+    cells.forEach(function(c){
+      if(!isMine(c[0],c[1])) return;
+      fxRing(c[0],c[1],o.l,2.0);
+      var around=[];
+      for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) around.push([c[0]+dx,c[1]+dy]);
+      digList(around,got);
+    });
+  }
+  else if(id==='plasma'){
+    var len=12+((Math.random()*4)|0);
+    var cells=line(ctx.x,ctx.y,DIRS[curDir],len);
+    digList(cells,got); fxBolt(cells,o.l); fxWave(cells,o.l,380);
+  }
+  else if(id==='sword'){
+    var d=DIRS[curDir], px=d[0], py=d[1], qx=-py, qy=px, cells=[[ctx.x,ctx.y]];
+    for(var i=-1;i<=1;i++) cells.push([ctx.x+px+qx*i, ctx.y+py+qy*i]);
+    for(var i=-2;i<=2;i++) cells.push([ctx.x+px*2+qx*i, ctx.y+py*2+qy*i]);
+    digList(cells,got); fxSlash(ctx.x,ctx.y,d,o.l); fxWave(cells,o.l,400);
+  }
+  else if(id==='beam'){
+    var d=DIRS[curDir], cells=[], hit=null, cx=ctx.x, cy=ctx.y;
+    for(var i=0;i<10;i++){
+      var gx=cx+d[0]*i, gy=cy+d[1]*i;
+      if(isMine(gx,gy)){ hit=[gx,gy,cx+d[0]*(i-1),cy+d[1]*(i-1)]; break; }
+      cells.push([gx,gy]);
+    }
+    digList(cells,got); fxBolt(cells,o.l); fxWave(cells,o.l,360);
+    if(hit && !cells.length){                    // 撃った足元がマインだった
+      S.flags[key(hit[0],hit[1])]=1;
+      toast('💡 撃った先がマインで光線が消えた…');
+    }else if(hit){
+      S.flags[key(hit[0],hit[1])]=1;
+      var perp=[[-d[1],d[0]],[d[1],-d[0]]];
+      var ok=perp.filter(function(p){ return !isMine(hit[2]+p[0],hit[3]+p[1]); });
+      if(ok.length){
+        var p=ok[(Math.random()*ok.length)|0], c2=[], hit2=null;
+        for(var i=1;i<=10;i++){
+          var gx=hit[2]+p[0]*i, gy=hit[3]+p[1]*i;
+          if(isMine(gx,gy)){ hit2=[gx,gy]; break; }
+          c2.push([gx,gy]);
+        }
+        digList(c2,got); fxBolt(c2,o.l); fxWave(c2,o.l,360);
+        if(hit2) S.flags[key(hit2[0],hit2[1])]=1;
+        fxRing(hit[2],hit[3],o.l,1.6,420);
+        toast('💡 マインに当たって屈折した');
+      }else toast('💡 三方をマインに囲まれて消滅…');
+    }
+  }
+  else if(id==='water'){
+    if(isMine(ctx.x,ctx.y)){
+      S.flags[key(ctx.x,ctx.y)]=1;
+      toast('💧 マインに阻まれて水が流れなかった…<br><small style="color:#a894c7">そこにマインがあった</small>');
+    }else{
+      /* 下を優先しつつ、採掘済みの地面は通り抜けて未採掘まで流れる */
+      var cells=[], seen={}, frontier=[[ctx.x,ctx.y]], guard=0;
+      seen[key(ctx.x,ctx.y)]=1;
+      while(cells.length<10 && frontier.length && guard++<2000){
+        frontier.sort(function(a,b){ return b[1]-a[1]; });
+        var cur=frontier.shift(), k=key(cur[0],cur[1]);
+        if(S.seal[k]||isMine(cur[0],cur[1])) continue;
+        if(S.opened[k]===undefined) cells.push(cur);
+        for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+          if(dx===0&&dy===0) continue;
+          var nx=cur[0]+dx, ny=cur[1]+dy, nk=key(nx,ny);
+          if(seen[nk]) continue; seen[nk]=1; frontier.push([nx,ny]);
+        }
+      }
+      if(!cells.length) toast('💧 流れ込む先がなかった…');
+      digList(cells,got); fxWave(cells,o.l,420);
+    }
+  }
+  else if(id==='hammer'){
+    var cells=[];
+    for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) cells.push([ctx.x+dx,ctx.y+dy]);
+    digList(cells,got); fxRing(ctx.x,ctx.y,o.l,2.4); fxWave(cells,o.l,420);
+  }
+  else if(id==='ninja'){
+    var cells=[[ctx.x,ctx.y]];
+    for(var i=1;i<=2;i++){ cells.push([ctx.x+i,ctx.y]); cells.push([ctx.x-i,ctx.y]);
+      cells.push([ctx.x,ctx.y+i]); cells.push([ctx.x,ctx.y-i]); }
+    digList(cells,got); fxSpin(ctx.x,ctx.y,o.l,1.6,480); fxWave(cells,o.l,380);
+  }
+  else if(id==='hurricane'){
+    var cells=[];
+    for(var dx=-2;dx<=2;dx++) for(var dy=-2;dy<=2;dy++)
+      if(Math.abs(dx)===2||Math.abs(dy)===2) cells.push([ctx.x+dx,ctx.y+dy]);
+    digList(cells,got); fxSpin(ctx.x,ctx.y,o.l,2.6,700); fxWave(cells,o.l,460);
+  }
+  else if(id==='dark'){
+    var cand=[];
+    for(var dx=-2;dx<=2;dx++) for(var dy=-2;dy<=2;dy++){
+      var gx=ctx.x+dx, gy=ctx.y+dy, k=key(gx,gy);
+      if(S.opened[k]===undefined && !S.seal[k]) cand.push([gx,gy]);
+    }
+    cand.sort(function(){ return Math.random()-0.5; });
+    var pick=cand.slice(0,Math.ceil(cand.length*0.4));
+    fxFlash(o.d,380);
+    if(S.opened[key(ctx.x,ctx.y)]===undefined && !S.seal[key(ctx.x,ctx.y)]
+       && !pick.some(function(c){ return c[0]===ctx.x&&c[1]===ctx.y; }))
+      pick.push([ctx.x,ctx.y]);                 // 起点は必ず含める
+    digList(pick,got); fxWave(pick,o.l,520);
+  }
+  else if(id==='sky'){
+    var dist=3+((Math.random()*3)|0), cells=[];
+    for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) cells.push([ctx.x+dx, ctx.y-dist+dy]);
+    digList(cells,got);
+    fxRing(ctx.x,ctx.y-dist,o.d,2.6); fxWave(cells,'#ffffff',420);
+    toast('☁️ '+dist+'マス上空に降りた');
+  }
+  else if(id==='beast'){
+    var best=null,bd=1e9;
+    for(var i=-3;i<=3;i++) for(var j=-3;j<=3;j++){
+      var v=vaultAt(Math.floor(ctx.x/VAULT_LAT)+i, Math.floor(ctx.y/VAULT_LAT)+j);
+      if(!v) continue;
+      var pk=vpeek(v); if(pk&&pk.c) continue;
+      var d2=(v[0]-ctx.x)*(v[0]-ctx.x)+(v[1]-ctx.y)*(v[1]-ctx.y);
+      if(d2<bd){ bd=d2; best=v; }
+    }
+    if(best){ vst(best).f=1; centerOn(best[0],best[1],46);
+      fxRing(best[0],best[1],'#4cc9f0',4,900); fxRing(best[0],best[1],o.l,2.6,700);
+      toast('🐾 金庫の匂いを辿った（'+best[0]+', '+best[1]+'）'); }
+    else { toast('🐾 近くに未発見の金庫はない'); S.orbs[id]++; }
+  }
+  else if(id==='ghost'){
+    S.ghostUntil=Date.now()+10000; fxFlash(o.l,600);
+    toast('👻 10秒間、辺縁のマインが見える');
+    setTimeout(function(){ render(); },10200);
+  }
+  else if(id==='shield'){ S.shieldLeft=3; fxRing(ctx.x||0,ctx.y||0,o.l,3,700); fxFlash(o.l,400); toast('🛡 3回の採掘のあいだ守られる'); }
+  else if(id==='dynamite'){ S.dynaLeft=1; fxFlash(o.l,400); toast('🧨 導火線に火がついた<br><small style="color:#a894c7">次の1手でマインを踏めば大爆発。外せば不発</small>'); }
+  else if(id==='bell'){ S.bell++; fxFlash(o.l,500); toast('🔔 ガチャ券の確率 +0.1%／マス（累積 '+(S.bell*0.1).toFixed(1)+'%）'); }
+  updateBar();
+  finishGot(got);
+  setMode('dig');
+}
+
+/* ======================= 演出 =======================
+   盤面の上に重ねて描く短いアニメーション。world座標で持つのでスクロールしても追従する */
+var fx=[], fxRAF=0;
+function addFx(dur,draw){
+  fx.push({t0:performance.now(), dur:dur, draw:draw});
+  if(!fxRAF) fxRAF=requestAnimationFrame(fxLoop);
+}
+function fxLoop(){
+  fxRAF=0;
+  var now=performance.now();
+  fx=fx.filter(function(f){ return now-f.t0<f.dur; });
+  drawFrame();
+  if(fx.length) fxRAF=requestAnimationFrame(fxLoop);
+}
+function cx_(gx){ return gx*CS-camX+CS/2; }
+function cy_(gy){ return gy*CS-camY+CS/2; }
+
+/* 影響したマスが順に光る（全オーブ共通の下地） */
+function fxWave(cells,col,dur){
+  if(!cells||!cells.length) return;
+  dur=dur||480;
+  var step=Math.min(26,320/cells.length), total=dur+cells.length*step;
+  addFx(total,function(g,p){
+    var now=p*total;
+    g.lineWidth=Math.max(1.5,CS*0.08);
+    for(var i=0;i<cells.length;i++){
+      var t=(now-i*step)/dur;
+      if(t<0||t>1) continue;
+      var e=1-Math.pow(1-t,2.2), a=1-t;
+      var x=cells[i][0]*CS-camX, y=cells[i][1]*CS-camY;
+      var s=CS*(0.25+1.05*e), o=(CS-s)/2;
+      g.globalAlpha=a*0.30; g.fillStyle=col; g.fillRect(x+o,y+o,s,s);
+      g.globalAlpha=a*0.95; g.strokeStyle=col; g.strokeRect(x+o,y+o,s,s);
+    }
+    g.globalAlpha=1;
+  });
+}
+/* 稲妻・光線 */
+function fxBolt(cells,col,dur){
+  if(!cells||cells.length<1) return;
+  dur=dur||440;
+  addFx(dur,function(g,p){
+    var n=Math.max(2,Math.ceil(cells.length*Math.min(1,p*1.8)));
+    g.globalAlpha=p<0.55?1:Math.max(0,1-(p-0.55)/0.45);
+    g.strokeStyle=col; g.lineWidth=Math.max(2,CS*0.17);
+    g.lineCap='round'; g.lineJoin='round';
+    g.shadowColor=col; g.shadowBlur=CS*0.55;
+    g.beginPath();
+    for(var i=0;i<n&&i<cells.length;i++){
+      var j=Math.sin(i*12.9898+p*9)*CS*0.22, k=Math.cos(i*78.233+p*11)*CS*0.22;
+      var x=cx_(cells[i][0])+j, y=cy_(cells[i][1])+k;
+      i?g.lineTo(x,y):g.moveTo(x,y);
+    }
+    g.stroke(); g.shadowBlur=0; g.globalAlpha=1;
+  });
+}
+/* 衝撃波 */
+function fxRing(gx,gy,col,maxR,dur){
+  addFx(dur||540,function(g,p){
+    var e=1-Math.pow(1-p,3);
+    g.globalAlpha=1-p; g.strokeStyle=col;
+    g.lineWidth=Math.max(2,CS*0.13*(1-p*0.6));
+    g.shadowColor=col; g.shadowBlur=CS*0.45;
+    g.beginPath(); g.arc(cx_(gx),cy_(gy),CS*maxR*e,0,7); g.stroke();
+    g.shadowBlur=0; g.globalAlpha=1;
+  });
+}
+/* 剣の一振り */
+function fxSlash(gx,gy,d,col,dur){
+  var base=Math.atan2(d[1],d[0]);
+  addFx(dur||440,function(g,p){
+    var a=base-1.25+2.5*p;
+    g.globalAlpha=(1-p)*0.95; g.strokeStyle=col;
+    g.lineWidth=Math.max(3,CS*0.24*(1-p*0.5)); g.lineCap='round';
+    g.shadowColor=col; g.shadowBlur=CS*0.5;
+    g.beginPath(); g.arc(cx_(gx),cy_(gy),CS*1.95,a-0.95,a); g.stroke();
+    g.shadowBlur=0; g.globalAlpha=1;
+  });
+}
+/* 渦 */
+function fxSpin(gx,gy,col,r,dur){
+  addFx(dur||640,function(g,p){
+    g.globalAlpha=1-p; g.strokeStyle=col;
+    g.lineWidth=Math.max(2,CS*0.14); g.lineCap='round';
+    g.shadowColor=col; g.shadowBlur=CS*0.4;
+    for(var k=0;k<2;k++){
+      var a=p*10+k*Math.PI;
+      g.beginPath(); g.arc(cx_(gx),cy_(gy),CS*(0.5+r*p),a,a+2.1); g.stroke();
+    }
+    g.shadowBlur=0; g.globalAlpha=1;
+  });
+}
+/* 画面全体がほのかに光る（マスを狙わないオーブ用） */
+function fxFlash(col,dur){
+  addFx(dur||460,function(g,p){
+    g.globalAlpha=Math.sin(Math.PI*p)*0.20; g.fillStyle=col;
+    g.fillRect(0,0,cv.width/dpr,cv.height/dpr); g.globalAlpha=1;
+  });
+}
+
+/* ======================= 描画 ======================= */
+var cv=$('#cv'), ctx2=cv.getContext('2d'), dpr=window.devicePixelRatio||1;
+var NUMC=['','#7dd3fc','#86efac','#fca5a5','#c4b5fd','#fdba74','#67e8f9','#f9a8d4','#e5e7eb'];
+var rafId=0, iceSet=null;
+function render(){ if(rafId) return; rafId=requestAnimationFrame(function(){ rafId=0; drawFrame(); }); }
+function resize(){
+  var b=$('#board');
+  cv.width=b.clientWidth*dpr; cv.height=b.clientHeight*dpr;
+  cv.style.width=b.clientWidth+'px'; cv.style.height=b.clientHeight+'px';
+  ctx2.setTransform(dpr,0,0,dpr,0,0); render();
+}
+function paintSeal(g,px,py,s,t,num,see){
+  if(t==='normal'||t==='pin'){
+    g.fillStyle='#E6E2ED'; g.fillRect(px,py,s,s);
+    g.fillStyle='#F7F5FA'; g.beginPath(); g.moveTo(px,py); g.lineTo(px+s*0.62,py); g.lineTo(px,py+s*0.62); g.fill();
+    g.strokeStyle='#B5ADC4'; g.lineWidth=Math.max(1,s*0.045); g.lineJoin='round';
+    g.beginPath();
+    g.moveTo(px+s*0.12,py+s*0.79); g.lineTo(px+s*0.46,py+s*0.52); g.lineTo(px+s*0.85,py+s*0.17);
+    g.moveTo(px+s*0.46,py+s*0.52); g.lineTo(px+s*0.88,py+s*0.85);
+    g.stroke();
+    if(num!==undefined&&num>0&&s>=20){
+      g.font='700 '+Math.round(s*0.44)+'px "Hiragino Kaku Gothic ProN",sans-serif';
+      g.fillStyle='rgba(60,40,90,.62)'; g.fillText(num,px+s/2,py+s/2);
+    }
+  }else if(t==='flare'){
+    g.fillStyle='#6E2109'; g.fillRect(px,py,s,s);
+    g.fillStyle='#D9541F';
+    g.beginPath(); g.moveTo(px+s/2,py+s*0.18);
+    g.bezierCurveTo(px+s*0.78,py+s*0.4,px+s*0.76,py+s*0.78,px+s/2,py+s*0.82);
+    g.bezierCurveTo(px+s*0.24,py+s*0.78,px+s*0.22,py+s*0.4,px+s/2,py+s*0.18); g.fill();
+    g.fillStyle='#FF9E4D';
+    g.beginPath(); g.moveTo(px+s/2,py+s*0.4);
+    g.bezierCurveTo(px+s*0.65,py+s*0.57,px+s*0.62,py+s*0.75,px+s/2,py+s*0.79);
+    g.bezierCurveTo(px+s*0.38,py+s*0.75,px+s*0.35,py+s*0.57,px+s/2,py+s*0.4); g.fill();
+  }else if(t==='cold'){
+    g.fillStyle='#1C5574'; g.fillRect(px,py,s,s);
+    g.strokeStyle='#9FE3F7'; g.lineWidth=Math.max(1.2,s*0.07); g.lineCap='round';
+    var cx=px+s/2, cy=py+s/2, r=s*0.3;
+    g.beginPath();
+    for(var k=0;k<3;k++){ var a=k*Math.PI/3;
+      g.moveTo(cx-r*Math.cos(a),cy-r*Math.sin(a)); g.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a)); }
+    g.stroke();
+  }else if(t==='thunder'){
+    g.fillStyle='#5E4D06'; g.fillRect(px,py,s,s);
+    g.fillStyle='#FFD84D';
+    g.beginPath();
+    g.moveTo(px+s*0.62,py+s*0.14); g.lineTo(px+s*0.34,py+s*0.56);
+    g.lineTo(px+s*0.49,py+s*0.56); g.lineTo(px+s*0.40,py+s*0.88);
+    g.lineTo(px+s*0.68,py+s*0.44); g.lineTo(px+s*0.52,py+s*0.44);
+    g.closePath(); g.fill();
+  }else{
+    g.fillStyle=see?'#1B1430':'#09060E'; g.fillRect(px,py,s,s);
+    if(see){                                   // 👻で中身が透けている
+      g.strokeStyle='rgba(211,230,238,.45)'; g.lineWidth=Math.max(1,s*0.05);
+      g.strokeRect(px+1.5,py+1.5,s-3,s-3);
+      if(s>=20){
+        if(num===-1){ g.fillStyle='#fff'; g.fillText('🚩',px+s/2,py+s/2); }
+        else if(num>0){ g.fillStyle=NUMC[num]; g.globalAlpha=.75;
+          g.fillText(num,px+s/2,py+s/2); g.globalAlpha=1; }
+      }
+    }else if(s>=14){
+      g.strokeStyle='#1E1630'; g.lineWidth=Math.max(1,s*0.055);
+      g.beginPath(); g.arc(px+s/2,py+s/2,s*0.26,0.6,4.2); g.stroke();
+    }
+  }
+}
+function drawFrame(){
+  var g=ctx2, W=cv.width/dpr, H=cv.height/dpr;
+  g.fillStyle='#13081f'; g.fillRect(0,0,W,H);
+  var ov=CS<OVERVIEW, num=CS>=20;
+  var x0=Math.floor(camX/CS), y0=Math.floor(camY/CS);
+  var nx=Math.ceil(W/CS)+1, ny=Math.ceil(H/CS)+1;
+  g.font='700 '+Math.round(CS*0.46)+'px "Hiragino Kaku Gothic ProN",sans-serif';
+  g.textAlign='center'; g.textBaseline='middle';
+  var ghost = S.ghostUntil && Date.now()<S.ghostUntil;
+
+  if(ov){ g.fillStyle='#4e2c88'; g.fillRect(0,0,W,H); }
+
+  for(var i=0;i<nx;i++) for(var j=0;j<ny;j++){
+    var gx=x0+i, gy=y0+j, px=gx*CS-camX, py=gy*CS-camY;
+    var k=key(gx,gy), o=S.opened[k], sid=S.seal[k], cx=px+CS/2, cy=py+CS/2;
+    if(sid){
+      var bt=S.blasts[sid]||{}, shown=o;
+      if(bt.see) shown = isMine(gx,gy) ? -1 : adj(gx,gy);
+      paintSeal(g,px,py,CS,bt.t||'normal',shown,bt.see);
+      continue;
+    }
+    if(iceSet&&iceSet[k]){
+      g.fillStyle='#BDEEFB'; g.fillRect(px,py,CS,CS);
+      g.fillStyle='#1577B5';
+      if(num) g.fillText('❄',cx,cy);
+      continue;
+    }
+    if(o!==undefined){
+      g.fillStyle=ov?'#1b1134':((gx+gy)%2?'#1a1030':'#1e1338');
+      g.fillRect(px,py,CS,CS);
+      if(num&&o>0){ g.fillStyle=NUMC[o]; g.fillText(o,cx,cy); }
+    }else{
+      if(!ov){
+        g.fillStyle=(gx+gy)%2?'#4a2a80':'#512e8c'; g.fillRect(px,py,CS,CS);
+        g.fillStyle='rgba(224,170,255,.22)'; g.fillRect(px,py,CS,3);
+      }
+      if(S.flags[k]){
+        if(num){ g.fillStyle='#fff'; g.fillText('🚩',cx,cy); }
+        else if(CS>=7){ g.fillStyle='#ff5d8f'; g.fillRect(cx-CS*0.2,cy-CS*0.2,CS*0.4,CS*0.4); }
+      }else if((S.known[k]||(ghost&&isMine(gx,gy)&&reachable(gx,gy)))&&CS>=7){
+        g.fillStyle='rgba(255,93,143,.85)'; g.fillRect(cx-CS*0.16,cy-CS*0.16,CS*0.32,CS*0.32);
+      }
+    }
+  }
+  // 罫線
+  if(CS>=12){
+    g.strokeStyle='rgba(13,5,24,.55)'; g.lineWidth=1; g.beginPath();
+    for(var i=0;i<=nx;i++){ var px=(x0+i)*CS-camX+.5; g.moveTo(px,0); g.lineTo(px,H); }
+    for(var j=0;j<=ny;j++){ var py=(y0+j)*CS-camY+.5; g.moveTo(0,py); g.lineTo(W,py); }
+    g.stroke();
+  }
+  // 原点
+  var ox=-SAFE_R*CS-camX, oy=-SAFE_R*CS-camY, os=(SAFE_R*2+1)*CS;
+  g.strokeStyle='rgba(255,214,10,.55)'; g.lineWidth=Math.max(1.5,CS*0.06);
+  g.strokeRect(ox,oy,os,os);
+  // 金庫 / チャレンジ枠
+  vaultsInView(x0,y0,x0+nx,y0+ny).forEach(function(v){
+    var st=S.vaults[key(v[0],v[1])]; if(!st||!st.f) return;
+    if(st.ch===1){
+      var fx=(v[0]-CHAL_R)*CS-camX, fy=(v[1]-CHAL_R)*CS-camY, fs=(CHAL_R*2+1)*CS;
+      g.strokeStyle='rgba(255,214,10,.25)'; g.lineWidth=7; g.strokeRect(fx,fy,fs,fs);
+      g.strokeStyle='#ffd60a'; g.lineWidth=2.5; g.strokeRect(fx,fy,fs,fs);
+    }
+    var vx=(v[0]-VAULT_R)*CS-camX, vy=(v[1]-VAULT_R)*CS-camY, vs=(VAULT_R*2+1)*CS;
+    g.strokeStyle='rgba(76,201,240,.28)'; g.lineWidth=7; g.strokeRect(vx,vy,vs,vs);
+    g.strokeStyle=st.c?'#2a7fa0':'#4cc9f0'; g.lineWidth=2.5; g.strokeRect(vx,vy,vs,vs);
+  });
+  // ポイズンの選択・繁殖したマス
+  var pz={};
+  S.poison.forEach(function(p){ p.cells.forEach(function(c){ pz[key(c[0],c[1])]=1; }); });
+  if(mode==='orb:poison'&&pending&&pending.cells)
+    pending.cells.forEach(function(c){ pz[key(c[0],c[1])]=1; });
+  for(var k2 in pz){
+    var q=k2.split(','), qx=+q[0]*CS-camX, qy=+q[1]*CS-camY;
+    if(qx<-CS||qy<-CS||qx>W||qy>H) continue;
+    g.strokeStyle='rgba(236,226,255,.92)';
+    g.lineWidth=Math.max(1.5,CS*0.055);
+    g.strokeRect(qx+2,qy+2,CS-4,CS-4);
+  }
+  // しおり
+  ['m1','m2','m3','m4'].forEach(function(c){
+    var mk=S.marks[c]; if(!mk) return;
+    var p=mk.split(','), mx=+p[0]*CS-camX, my=+p[1]*CS-camY;
+    if(mx<-CS||my<-CS||mx>W||my>H) return;
+    var col=getComputedStyle(document.documentElement).getPropertyValue('--'+c).trim();
+    if(ov){ var s=Math.max(CS,7); g.fillStyle=col; g.fillRect(mx+CS/2-s/2,my+CS/2-s/2,s,s); }
+    else{ g.strokeStyle=col; g.lineWidth=Math.max(2,CS*0.08); g.strokeRect(mx+2,my+2,CS-4,CS-4); }
+  });
+  // 演出レイヤー
+  if(fx.length){
+    var now=performance.now();
+    for(var fi=0;fi<fx.length;fi++){
+      var f=fx[fi], p=Math.min(1,(now-f.t0)/f.dur);
+      g.save(); f.draw(g,p); g.restore();
+    }
+  }
+  hudPos();
+}
+function hudPos(){
+  var r=$('#board').getBoundingClientRect();
+  $('#s-pos').textContent=Math.floor((camX+r.width/2)/CS)+', '+Math.floor((camY+r.height/2)/CS);
+  $('#z-in').disabled=CS>=MAX_CS; $('#z-out').disabled=CS<=MIN_CS;
+}
+function zoomTo(ns){
+  var r=$('#board').getBoundingClientRect(), mx=r.width/2, my=r.height/2;
+  var wx=(camX+mx)/CS, wy=(camY+my)/CS, was=CS<OVERVIEW;
+  CS=Math.max(MIN_CS,Math.min(MAX_CS,ns));
+  camX=wx*CS-mx; camY=wy*CS-my;
+  if(!was&&CS<OVERVIEW) toast('俯瞰モード：タップで移動');
+  render();
+}
+function centerOn(gx,gy,cs){
+  var r=$('#board').getBoundingClientRect();
+  if(cs) CS=Math.max(MIN_CS,Math.min(MAX_CS,cs));
+  camX=(gx+0.5)*CS-r.width/2; camY=(gy+0.5)*CS-r.height/2;
+  render();
+}
+$('#z-in').onclick=function(){ zoomTo(CS*1.5); };
+$('#z-out').onclick=function(){ zoomTo(CS/1.5); };
+
+/* ======================= 入力 ======================= */
+var pt={}, startX=0,startY=0,sCamX=0,sCamY=0,moved=0,pinch=0,pinchCS=0,t0=0,lpT=0,lpDone=false;
+function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+function cellAt(cx,cy){
+  var r=$('#board').getBoundingClientRect();
+  return [Math.floor((camX+cx-r.left)/CS), Math.floor((camY+cy-r.top)/CS)];
+}
+function ring(gx,gy,off){
+  var bd=$('#board'), cx=gx*CS-camX+CS/2, cy=gy*CS-camY+CS/2;
+  ['','d2'].forEach(function(c){
+    var d=document.createElement('div'); d.className='ring '+c+(off?' off':'');
+    d.style.left=cx+'px'; d.style.top=cy+'px'; bd.appendChild(d);
+    setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); },800);
+  });
+}
+function toggleFlag(x,y){
+  var k=key(x,y);
+  if(S.opened[k]!==undefined||S.seal[k]) return;
+  if(S.flags[k]){ delete S.flags[k]; ring(x,y,true); }
+  else{
+    if(!reachable(x,y)){ toast('ここは届かない<br><small style="color:#a894c7">開けたマスの隣にだけ旗を立てられる</small>'); return; }
+    S.flags[k]=1; ring(x,y);
+  }
+  render(); saveSoon();
+}
+cv.addEventListener('pointerdown',function(e){
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}
+  pt[e.pointerId]={x:e.clientX,y:e.clientY};
+  var ids=Object.keys(pt);
+  if(ids.length===1){
+    startX=e.clientX; startY=e.clientY; sCamX=camX; sCamY=camY; moved=0; t0=Date.now(); lpDone=false;
+    closePops(); clearTimeout(lpT);
+    if(mode==='dig'&&CS>=OVERVIEW){
+      lpT=setTimeout(function(){
+        if(moved>TAP_PX) return;
+        var g=cellAt(startX,startY); lpDone=true; toggleFlag(g[0],g[1]);
+      },S.longMs);
+    }
+  }else if(ids.length===2){ clearTimeout(lpT); pinch=dist(pt[ids[0]],pt[ids[1]]); pinchCS=CS; moved=99; }
+});
+cv.addEventListener('pointermove',function(e){
+  if(!pt[e.pointerId]) return;
+  pt[e.pointerId]={x:e.clientX,y:e.clientY};
+  var ids=Object.keys(pt);
+  if(ids.length>=2&&pinch){
+    var d=dist(pt[ids[0]],pt[ids[1]]);
+    var ns=Math.max(MIN_CS,Math.min(MAX_CS,pinchCS*d/pinch));
+    var r=$('#board').getBoundingClientRect();
+    var mx=(pt[ids[0]].x+pt[ids[1]].x)/2-r.left, my=(pt[ids[0]].y+pt[ids[1]].y)/2-r.top;
+    var wx=(camX+mx)/CS, wy=(camY+my)/CS, was=CS<OVERVIEW;
+    CS=ns; camX=wx*CS-mx; camY=wy*CS-my;
+    if(!was&&CS<OVERVIEW) toast('俯瞰モード：タップで移動');
+    render(); return;
+  }
+  var dx=e.clientX-startX, dy=e.clientY-startY;
+  moved=Math.max(moved,Math.hypot(dx,dy));
+  if(moved>TAP_PX) clearTimeout(lpT);
+  camX=sCamX-dx; camY=sCamY-dy; render();
+});
+function up(e){
+  delete pt[e.pointerId]; clearTimeout(lpT);
+  var ids=Object.keys(pt);
+  if(ids.length===0) pinch=0;
+  else if(ids.length===1){
+    /* ピンチから1本指に戻った：基準を取り直さないと、その差分だけ盤面が飛ぶ */
+    pinch=0; moved=99;
+    startX=pt[ids[0]].x; startY=pt[ids[0]].y;
+    sCamX=camX; sCamY=camY;
+    return;
+  }
+  if(lpDone){ moved=99; return; }
+  if(moved<TAP_PX && Date.now()-t0<S.longMs+140){
+    var g=cellAt(e.clientX,e.clientY);
+    if(CS<OVERVIEW){ centerOn(g[0],g[1],46); moved=99; return; }
+    tapCell(g[0],g[1]);
+  }
+  moved=99;
+}
+cv.addEventListener('pointerup',up);
+cv.addEventListener('pointercancel',up);
+cv.addEventListener('contextmenu',function(e){ e.preventDefault(); });
+
+/* ======================= モード / タップ処理 ======================= */
+var pending=null, markColor=null, icePhase=null;
+function tapCell(x,y){
+  if(mode==='dig'){ dig(x,y); return; }
+  if(mode==='mark'){ placeMark(x,y); return; }
+  if(mode==='ice'){ iceTap(x,y); return; }
+  if(mode.indexOf('orb:')!==0) return;
+  var id=mode.slice(4), o=OB[id], k=key(x,y), sid=S.seal[k];
+
+  if(sid){                                  // 封鎖に使う
+    var b=S.blasts[sid], t=b.t==='pin'?'normal':b.t;
+    var can = id==='doctor' || (MINES[t]&&MINES[t].by.indexOf(id)>=0) || (t==='black'&&id==='ghost');
+    if(can){ askUseOnSeal(id,sid,x,y); return; }
+    toast(o.n+'ではこの封鎖は解除できない'); return;
+  }
+  /* 狙うマスは隣接縛りに従う。効果の範囲は辺縁をはみ出してよい。
+     ☁️スカイだけが離れた場所に降りられる */
+  if(id!=='sky' && o.use!=='inst' && o.use!=='arm' && o.use!=='choice' && !reachable(x,y)){
+    toast('ここには届かない<br><small style="color:#a894c7">オーブも開けたマスの隣から。離れた場所へ飛べるのは ☁️スカイ だけ</small>');
+    return;
+  }
+  if(o.use==='poison'){
+    pending=pending||{cells:[]};
+    if(S.opened[k]===undefined||S.seal[k]){ toast('採掘済みのマスを選んで'); return; }
+    pending.cells.push([x,y]);
+    if(pending.cells.length<3){ updateBar(); render(); toast('あと'+(3-pending.cells.length)+'マス'); return; }
+    var cells=pending.cells; pending=null;
+    confirmDlg(orbSvg(o),'ポイズンを使う','選んだ3マスから、あなたが採掘するたびに毒が隣へ広がる（各7回）<br>残り '+S.orbs[id]+'個','使う',function(){
+      S.orbs[id]--;
+      cells.forEach(function(c){ S.poison.push({cells:[c],left:7}); fxRing(c[0],c[1],OB.poison.l,1.8,560); });
+      toast('☠️ 毒が3箇所に根を張った'); setMode('dig'); hud(); save(); updateBar();
+    });
+    return;
+  }
+  if(o.use==='ice'){
+    confirmDlg(orbSvg(o),'アイスを使う','ここを起点に氷を広げる（4連まで）<br>残り '+S.orbs[id]+'個','使う',function(){
+      S.orbs[id]--; iceSet={}; iceSet[key(x,y)]=1; icePhase=3;
+      setMode('ice'); render(); hud(); save();
+    });
+    return;
+  }
+  if(NON_TARGET[o.use]){
+    toast(o.n+'は封鎖をタップして解除する<br><small style="color:#a894c7">通常効果は下の「効果を使う」から</small>');
+    return;
+  }
+  // セル指定・方向指定
+  if(o.use==='cell'||o.use==='dir'){
+    var where = o.use==='dir' ? '（'+({up:'↑',right:'→',down:'↓',left:'←'})[curDir]+'方向）' : '';
+    confirmDlg(orbSvg(o),o.n+'を使う', o.e+'<br><br>（'+x+', '+y+'）'+where+'　残り '+S.orbs[id]+'個','使う',function(){
+      useOrb(id,{x:x,y:y});
+    });
+  }
+}
+function iceTap(x,y){
+  var k=key(x,y);
+  if(!iceSet[k]){ finishIce(); return; }
+  if(icePhase<=0){ finishIce(); return; }
+  var add=[];
+  for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+    if(dx===0&&dy===0) continue;
+    var gx=x+dx, gy=y+dy, nk=key(gx,gy);
+    if(iceSet[nk]||S.opened[nk]!==undefined||S.seal[nk]||isMine(gx,gy)) continue;
+    add.push(nk);
+  }
+  add.forEach(function(nk){ iceSet[nk]=1; });
+  icePhase--;
+  updateBar(); render();
+  if(icePhase<=0) setTimeout(finishIce,350);
+}
+function finishIce(){
+  if(!iceSet) return;
+  var got={};
+  for(var k in iceSet){ var p=k.split(','); openOne(+p[0],+p[1],got); }
+  var n=Object.keys(iceSet).length;
+  var icells=Object.keys(iceSet).map(function(k){ var q=k.split(','); return [+q[0],+q[1]]; });
+  fxWave(icells,OB.ice.l,560);
+  iceSet=null; icePhase=null; setMode('dig');
+  toast('🧊 氷が解けて '+n+'マスが開いた');
+  step(); finishGot(got);
+}
+function askUseOnSeal(id,sid,x,y){
+  var o=OB[id], b=S.blasts[sid], t=b.t==='pin'?'normal':b.t;
+  var desc, act;
+  if(id==='ghost'){
+    desc='この封鎖の中身が見えるようになり、隣接マスも採掘できるようになる';
+    act=function(){ S.orbs[id]--; S.blasts[sid].see=1; fxWave(blastCells(sid),o.l,600);
+      toast('👻 封鎖をすり抜けられるようになった'); render(); hud(); save(); setMode('dig'); };
+  }else if(id==='doctor'){
+    var cells=doctorCells(sid,x,y);
+    desc='ここを起点に <b>'+cells.length+'マス</b> を解除する';
+    act=function(){ S.orbs[id]--; unseal(cells,sid); fxWave(cells,o.l,560);
+      toast('💉 封鎖を '+cells.length+'マス解除した'); render(); hud(); save(); setMode('dig'); };
+  }else if(t==='flare'){
+    var cells=flareCluster(sid,x,y);
+    desc='繋がった炎 <b>'+cells.length+'マス</b> を消火する';
+    act=function(){ S.orbs[id]--; unseal(cells,sid); fxWave(cells,o.l,560);
+      toast('🔥 炎を '+cells.length+'マス消した'); render(); hud(); save(); setMode('dig'); };
+  }else{
+    desc='この封鎖（'+b.n+'マス）をすべて解除する';
+    act=function(){ var cl=blastCells(sid); S.orbs[id]--; clearSeal(sid); fxWave(cl,o.l,560);
+      fxRing(b.x,b.y,o.l,2.6,620); toast('封鎖を解除した'); render(); hud(); save(); setMode('dig'); };
+  }
+  confirmDlg(orbSvg(o),o.n+'を使う',desc+'<br>残り '+S.orbs[id]+'個','使う',act);
+}
+function flareCluster(sid,x,y){
+  var out=[], seen={}, q=[[x,y]];
+  seen[key(x,y)]=1;
+  while(q.length){
+    var c=q.shift(), k=key(c[0],c[1]);
+    if(S.seal[k]!==sid) continue;
+    out.push(c);
+    [[1,0],[-1,0],[0,1],[0,-1]].forEach(function(d){
+      var nk=key(c[0]+d[0],c[1]+d[1]);
+      if(!seen[nk]){ seen[nk]=1; q.push([c[0]+d[0],c[1]+d[1]]); }
+    });
+  }
+  return out;
+}
+function doctorCells(sid,x,y){
+  var b=S.blasts[sid], t=b.t==='pin'?'normal':b.t;
+  if(t==='normal') return blastCells(sid);
+  if(t==='flare') return flareCluster(sid,x,y);
+  if(t==='black'){
+    var out=[];
+    for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++)
+      if(S.seal[key(x+dx,y+dy)]===sid) out.push([x+dx,y+dy]);
+    return out;
+  }
+  if(t==='cold'){
+    var hor=hsh(b.x,b.y,11)%2===0, out=[];
+    for(var i=-2;i<=2;i++){
+      var c=hor?[x+i,b.y]:[b.x,y+i];
+      if(S.seal[key(c[0],c[1])]===sid) out.push(c);
+    }
+    return out;
+  }
+  // thunder：タップした腕1本＋中心
+  var out=[[b.x,b.y]], dx=x-b.x, dy=y-b.y;
+  var d = Math.abs(dx)>=Math.abs(dy) ? [dx>0?1:-1,0] : [0,dy>0?1:-1];
+  for(var i=1;i<=4;i++){
+    var c=[b.x+d[0]*i, b.y+d[1]*i];
+    if(S.seal[key(c[0],c[1])]===sid) out.push(c);
+  }
+  return out;
+}
+function askSeal(sid,x,y){
+  var b=S.blasts[sid], t=b.t==='pin'?'normal':b.t, m=MINES[t];
+  var owned=m.by.filter(function(i){ return S.orbs[i]>0; });
+  var btns=[{t:'閉じる',sub:true}];
+  if(t==='normal'){
+    var cost=Math.round(b.n*5);
+    btns.push({t:cost+'💎で解除', dis:S.dia<cost, f:function(){
+      if(S.dia<cost) return; var cl=blastCells(sid); S.dia-=cost; clearSeal(sid);
+      fxWave(cl,'#4cc9f0',560); toast('封鎖を解除した'); render(); hud(); save(); }});
+  }
+  dlg('▨', m.n+'の封鎖',
+    b.n+'マスが封鎖されている。<br>'
+    +'解除できるオーブ：'+m.by.map(function(i){ return OB[i].n+(S.orbs[i]?'（'+S.orbs[i]+'）':''); }).join('・')
+    +'<br>💉ドクターなら部分的に解除できる'
+    +(owned.length?'<br><br><small style="color:#a894c7">🎒から選んで、この封鎖をタップ</small>':'<br><br><small style="color:#ff5d8f">解除できるオーブを持っていない</small>'),
+    btns);
+}
+
+function setMode(m,o){
+  mode=m; pending=null;
+  $('#b-bag').classList.toggle('on', m.indexOf('orb:')===0||m==='ice');
+  $('#b-mark').classList.toggle('on', m==='mark');
+  updateBar();
+}
+function updateBar(){
+  var bar=$('#modebar'), h='';
+  if(mode==='ice'){
+    h='<span class="tx">🧊 氷をタップして広げる（残り '+icePhase+'連）</span>'
+     +'<button id="mbend">採掘する</button>';
+  }else if(mode==='mark'){
+    h='<span class="tx">📍 しおりを置くマスをタップ</span><button id="mbx">やめる</button>';
+  }else if(mode.indexOf('orb:')===0){
+    var o=OB[mode.slice(4)];
+    h=orbSvg(o,26)+'<span class="tx">'+o.n
+      +(o.use==='poison'?'：あと'+(3-((pending&&pending.cells.length)||0))+'マス選ぶ'
+        :NON_TARGET[o.use]?'：封鎖をタップして解除':'：対象をタップ')
+      +'</span>';
+    if(NON_TARGET[o.use]) h+='<button id="mbuse">効果を使う</button>';
+    if(o.use==='dir'){
+      h+='<span class="dir">'
+        +['up','left','right','down'].map(function(d){
+          return '<button data-dir="'+d+'" class="'+(curDir===d?'on':'')+'">'
+            +({up:'↑',left:'←',right:'→',down:'↓'})[d]+'</button>'; }).join('')+'</span>';
+    }
+    h+='<button id="mbx">やめる</button>';
+  }else{
+    var st=[];
+    if(S.shieldLeft>0) st.push('🛡'+S.shieldLeft);
+    if(S.dynaLeft>0) st.push('🧨 次の1手');
+    if(S.stoneArmed) st.push('🪨');
+    if(S.revive>0) st.push('🪨復活'+S.revive);
+    if(S.leafLeft>0) st.push('🌿'+S.leafLeft);
+    if(S.bell>0) st.push('🔔+'+(S.bell*0.1).toFixed(1)+'%');
+    if(S.poison.length) st.push('☠️'+S.poison.length);
+    if(st.length) h='<span class="tx">'+st.join('　')+'</span>';
+  }
+  if(!h){ bar.classList.remove('show'); return; }
+  bar.innerHTML=h; bar.classList.add('show');
+  if($('#mbx')) $('#mbx').onclick=function(){ markColor=null; setMode('dig'); };
+  if($('#mbend')) $('#mbend').onclick=finishIce;
+  if($('#mbuse')) $('#mbuse').onclick=function(){ useNonTarget(mode.slice(4)); };
+  $$('#modebar [data-dir]').forEach(function(b){
+    b.onclick=function(){ curDir=b.dataset.dir; updateBar(); };
+  });
+}
+function closePops(){ $('#pop-bag').classList.remove('show'); $('#pop-mark').classList.remove('show'); }
+
+/* マスを狙わずに使うタイプ */
+var NON_TARGET={inst:1, arm:1, choice:1};
+function useNonTarget(id){
+  var o=OB[id];
+  if(!S.orbs[id]){ toast(o.n+'のオーブを持っていない'); return; }
+  if(id==='leaf'){
+    dlg(orbSvg(o),'リーフを使う','200マスのあいだ効果が続く。どちらにする？',[
+      {t:'やめる',sub:true},
+      {t:'💎を増やす',f:function(){ S.orbs[id]--; S.leafLeft=200; S.leafMode='dia';
+        toast('🌿 200マスのあいだ💎の出現率3倍'); setMode('dig'); hud(); save(); }},
+      {t:'🎫を増やす',f:function(){ S.orbs[id]--; S.leafLeft=200; S.leafMode='tix'; S.bell+=3;
+        toast('🌿 チケット確率 +0.3%／マス'); setMode('dig'); hud(); save(); }}]);
+    return;
+  }
+  if(id==='stone'){
+    dlg(orbSvg(o),'ストーンを使う','どちらにする？<br>残り '+S.orbs[id]+'個',[
+      {t:'やめる',sub:true},
+      {t:'復活権',f:function(){ S.orbs[id]--; S.revive++;
+        toast('🪨 ダイヤチャレンジの復活権を得た（'+S.revive+'）'); setMode('dig'); hud(); save(); }},
+      {t:'封鎖を抑える',f:function(){ S.orbs[id]--; S.stoneArmed=true;
+        toast('🪨 次に踏むマインの封鎖は1マスだけになる'); setMode('dig'); hud(); save(); }}]);
+    return;
+  }
+  confirmDlg(orbSvg(o),o.n+'を使う',o.e+'<br>残り '+S.orbs[id]+'個','使う',function(){
+    useOrb(id,{x:0,y:0}); });
+}
+/* 🎒 */
+function drawBag(){
+  var h='<h4>オーブ</h4><div class="obag">';
+  ORBS.forEach(function(o){
+    var n=S.orbs[o.id];
+    h+='<div class="o'+(n?'':' z')+'" data-orb="'+o.id+'">'+orbSvg(o)
+      +'<span class="q">'+n+'</span></div>';
+  });
+  $('#pop-bag').innerHTML=h+'</div>';
+  $$('#pop-bag [data-orb]').forEach(function(el){
+    el.onclick=function(){
+      var id=el.dataset.orb, o=OB[id];
+      closePops();
+      if(!S.orbs[id]){ toast(o.n+'のオーブを持っていない'); return; }
+      /* 解除役を持つオーブは、まず封鎖を狙えるモードに入る（通常効果はバーのボタンから） */
+      if(o.cnt && o.cnt!=='all' && NON_TARGET[o.use]){
+        setMode('orb:'+id);
+        toast(o.n+'：封鎖をタップすると解除<br><small style="color:#a894c7">下のボタンで通常効果も使える</small>');
+        return;
+      }
+      if(NON_TARGET[o.use]){ useNonTarget(id); return; }
+      setMode('orb:'+id);
+      toast(o.n+'：'+o.e);
+    };
+  });
+}
+/* 📍 */
+var MCOL=['m1','m2','m3','m4'];
+function drawMarkPop(){
+  var h='<h4>しおり</h4><div class="mk">'
+   +'<div class="c" data-go="home" style="border-color:#ffd60a;color:#ffd60a">🏠</div>';
+  MCOL.forEach(function(c){
+    var set=!!S.marks[c], col=getComputedStyle(document.documentElement).getPropertyValue('--'+c).trim();
+    h+='<div class="c'+(set?' set':'')+'" data-mk="'+c+'" style="border-color:'+col+';color:'+col+'">'
+      +(set?'<span class="x" data-del="'+c+'">✕</span>':'＋')+'</div>';
+  });
+  h+='</div><p style="font-size:10.5px;color:var(--sub);margin-top:8px;line-height:1.5">'
+    +'空き枠を押して盤面をタップで登録。<br>登録済みは押すとそこへ移動。</p>';
+  $('#pop-mark').innerHTML=h;
+  $('#pop-mark [data-go]').onclick=function(){ closePops(); centerOn(0,0,46); };
+  $$('#pop-mark [data-mk]').forEach(function(el){
+    el.onclick=function(ev){
+      if(ev.target.dataset.del){ delete S.marks[ev.target.dataset.del]; save(); drawMarkPop(); render(); return; }
+      var c=el.dataset.mk; closePops();
+      if(S.marks[c]){ var p=S.marks[c].split(','); centerOn(+p[0],+p[1],46); }
+      else{ markColor=c; setMode('mark'); }
+    };
+  });
+}
+function placeMark(x,y){
+  if(!markColor) return;
+  S.marks[markColor]=key(x,y);
+  toast('📍 しおりを置いた（'+x+', '+y+'）');
+  markColor=null; setMode('dig'); render(); save();
+}
+$('#b-bag').onclick=function(){
+  var open=$('#pop-bag').classList.contains('show'); closePops();
+  if(!open){ drawBag(); $('#pop-bag').classList.add('show'); }
+};
+var mkT;
+$('#b-mark').addEventListener('pointerdown',function(){
+  mkT=setTimeout(function(){ mkT=0; closePops(); centerOn(0,0,46); toast('🏠 拠点に戻った'); },S.longMs);
+});
+$('#b-mark').addEventListener('pointerup',function(){
+  if(!mkT) return; clearTimeout(mkT); mkT=0;
+  var open=$('#pop-mark').classList.contains('show'); closePops();
+  if(!open){ drawMarkPop(); $('#pop-mark').classList.add('show'); }
+});
+$('#b-mark').addEventListener('pointerleave',function(){ clearTimeout(mkT); mkT=0; });
+
+/* ======================= HUD ======================= */
+function hud(){
+  $('#dia .v').textContent=fmt(S.dia);
+  $('#tix').textContent='🎫 '+S.t1+' / 🏅 '+S.t10;
+  $('#s-streak').textContent=S.streak;
+  $('#s-safe').textContent=fmt(S.safeStreak);
+  $('#s-total').textContent=fmt(S.totalOpened);
+  $('#cdot').classList.toggle('show', Object.keys(S.pending).length>0);
+  $('#skiptxt').textContent=S.skipGacha?'現在：スキップ（結果だけ表示）':'現在：演出あり';
+}
+
+/* ======================= ロードマップ ======================= */
+function tierList(t,v){
+  var out=t.tiers.slice();
+  if(t.rec){
+    var top=Math.max(v,t.rec.from+t.rec.step*2);
+    for(var x=t.rec.from+t.rec.step;x<=top+t.rec.step*2;x+=t.rec.step){
+      out.push([x,t.rec.dia]);
+      if(out.length>t.tiers.length+40) break;
+    }
+  }
+  return out;
+}
+function checkTracks(){
+  if(!S.ever) S.ever={};
+  var msgs=[], again=0;
+  TRACKS.forEach(function(t){
+    var v=t.get();
+    tierList(t,v).forEach(function(tr){
+      if(v<tr[0]) return;
+      var id=t.id+':'+tr[0];
+      if(t.id==='safe'){ if(S.safeHit[tr[0]]) return; S.safeHit[tr[0]]=1; }
+      else { if(S.reached[id]) return; S.reached[id]=1; }
+      S.pending[id]=(S.pending[id]||0)+1;
+      /* 初達成だけ知らせる。取り直しは静かに積むだけ */
+      if(S.ever[id]||S.claimCount[id]) again++;
+      else { S.ever[id]=1; msgs.push(t.ic+' '+t.nm+' '+fmt(tr[0])+t.u); }
+    });
+  });
+  if(msgs.length)
+    toast('🏆 '+msgs.join('<br>')+' 達成！<br><small style="color:#a894c7">実績タブでスタンプを押そう</small>');
+  else if(again)
+    toast('🏆 無事故記録の報酬を'+again+'件ためた');
+  hud();
+}
+function showStamp(label,rw){
+  var s=$('#stamp');
+  s.innerHTML='<div class="mk2">達成<b>'+label+'</b></div><div class="got">'+rw+'</div>';
+  s.classList.add('show');
+  setTimeout(function(){ s.classList.remove('show'); },1500);
+}
+function claim(t,tr){
+  var id=t.id+':'+tr[0], n=S.pending[id]; if(!n) return;
+  S.dia+=(tr[1]||0)*n;
+  delete S.pending[id];
+  S.claimCount[id]=(S.claimCount[id]||0)+n;
+  showStamp(fmt(tr[0])+t.u,'+'+((tr[1]||0)*n)+'💎');
+  hud(); save(); setTimeout(drawRoadmap,120);
+}
+function drawRoadmap(){
+  checkTracks();
+  var h='';
+  TRACKS.forEach(function(t){
+    var v=t.get(), lockShown=0, body='';
+    h+='<div class="trk"><div class="trkh">'+t.ic+' '+t.nm+'<span>'+fmt(v)+t.u+'</span></div>';
+    tierList(t,v).forEach(function(tr){
+      var id=t.id+':'+tr[0], pend=S.pending[id]||0, cc=S.claimCount[id]||0;
+      var st=pend?'pd':(cc?'ok':'lk');
+      if(st==='lk'){ lockShown++; if(lockShown>3) return; }
+      body+='<div class="nd '+(st==='lk'?'':st)+'">'
+        +'<div class="bul">'+(st==='ok'?'✓':(st==='pd'?'🏆':''))+'</div>'
+        +'<div class="tx">'+fmt(tr[0])+t.u
+        +(cc>1?' <small>'+cc+'回達成</small>':(st==='lk'&&lockShown===1
+          ?'<div class="bar"><i style="width:'+Math.min(100,Math.round(v/tr[0]*100))+'%"></i></div>':''))
+        +'</div>';
+      body+= st==='pd'
+        ? '<button class="stbtn" data-t="'+t.id+'" data-v="'+tr[0]+'">スタンプ +'+tr[1]+'💎</button>'
+        : '<div class="rw">'+tr[1]+'💎</div>';
+      body+='</div>';
+    });
+    h+=body+'</div>';
+  });
+  $('#seg-rm').innerHTML=h;
+  $$('#seg-rm .stbtn').forEach(function(b){
+    b.onclick=function(){
+      var t=null; TRACKS.forEach(function(x){ if(x.id===b.dataset.t) t=x; });
+      if(!t) return;
+      var tv=+b.dataset.v, tr=null;
+      tierList(t,t.get()).forEach(function(x){ if(x[0]===tv) tr=x; });
+      if(tr) claim(t,tr);
+    };
+  });
+}
+
+/* ======================= 日付 ======================= */
+function rollDay(){
+  var t=today(); if(S.dayKey===t) return;
+  var d=dayDiff(S.lastLogin,t);
+  if(S.lastLogin===null) S.streak=1;
+  else if(d===1) S.streak++;
+  else if(d>1) S.streak=1;
+  S.lastLogin=t; S.dayKey=t;
+  var dia=3+Math.min(7,Math.floor(S.streak/7));
+  S.dia+=dia;
+  toast('ログインボーナス<br>連続'+S.streak+'日　+'+dia+'💎');
+  checkTracks(); save();
+}
+/* ======================= ガチャ ======================= */
+function drawGachaMenu(){
+  $('#gmenu').innerHTML=
+   '<div class="card" style="text-align:center"><h3>坑道ガチャ</h3>'
+   +'<p>1連 '+GACHA1+'💎 ／ 10連 '+GACHA10+'💎<br>'
+   +'<b style="color:var(--gold)">10連は11連ぶん引ける</b></p>'
+   +'<p style="margin-top:7px">天井カウンタ <b style="color:var(--gold)">'+S.pity+'</b> / '+PITY+'</p>'
+   +'<div class="row" style="margin-top:11px">'
+   +'<button class="btn" style="flex:1" id="g1">1連</button>'
+   +'<button class="btn" style="flex:1.3" id="g10">10連（+1）</button></div>'
+   +(S.t1||S.t10?'<div class="row" style="margin-top:8px">'
+     +(S.t1?'<button class="btn sub" style="flex:1" id="u1">🎫 券で1連（'+S.t1+'）</button>':'')
+     +(S.t10?'<button class="btn sub" style="flex:1" id="u10">🏅 券で10連（'+S.t10+'）</button>':'')
+     +'</div>':'')
+   +'</div>'
+   +'<div class="card"><h3>排出</h3><p>オーブ 80%／💎・ガチャ券 20%<br>'
+   +'オーブは1個50%・3個30%・5個15%・10個5%<br>'
+   +'天井'+PITY+'連で10個セット確定</p></div>';
+  $('#g1').onclick=function(){ startGacha(1,false); };
+  $('#g10').onclick=function(){ startGacha(10,false); };
+  if($('#u1')) $('#u1').onclick=function(){ startGacha(1,true); };
+  if($('#u10')) $('#u10').onclick=function(){ startGacha(10,true); };
+}
+function pullOne(bonus){
+  S.pity++;
+  var big = S.pity>=PITY;
+  if(big) S.pity=0;
+  var r=Math.random();
+  if(!bonus && r>=0.80){
+    var q=Math.random();
+    if(q<0.75){ var d=20+((Math.random()*31)|0); S.dia+=d; return {cls:'c-w', ic:'💎', nm:d+'💎'}; }
+    if(q<0.95){ S.t1++; return {cls:'c-g', ic:'🎫', nm:'ガチャ券'}; }
+    S.t10++; return {cls:'c-r', ic:'🏅', nm:'黄金のガチャ券'};
+  }
+  var t=Math.random(), cnt = big?10 : t<0.50?1:t<0.80?3:t<0.95?5:10;
+  var o=ORBS[(Math.random()*ORBS.length)|0];
+  S.orbs[o.id]+=cnt;
+  return {cls: cnt>=10?'c-r':cnt>=5?'c-g':cnt>=3?'c-c':'c-w', orb:o, nm:o.n+' ×'+cnt};
+}
+var G={res:null}, gTimers=[];
+function clearTimers(){ gTimers.forEach(clearTimeout); gTimers=[]; }
+function startGacha(n,byTicket){
+  var cost = n===1?GACHA1:GACHA10;
+  if(byTicket){
+    if(n===1&&!S.t1){ toast('ガチャ券がない'); return; }
+    if(n===10&&!S.t10){ toast('黄金のガチャ券がない'); return; }
+  }else if(S.dia<cost){ toast('💎が足りない'); return; }
+  confirmDlg('🎁', n===1?'1連を回す':'10連を回す',
+    byTicket?'チケットを1枚使う':cost+'💎 を使う。所持 '+fmt(S.dia)+'💎',
+    '回す', function(){
+      if(byTicket){ if(n===1) S.t1--; else S.t10--; } else S.dia-=cost;
+      var res=[]; for(var i=0;i<n;i++) res.push(pullOne(false));
+      if(n===10) res.push(pullOne(true));
+      G.res=res; save();
+      $('#gmenu').style.display='none'; $('#gstage').style.display='';
+      if(S.skipGacha) showCaps(true); else machine();
+    });
+}
+function machine(){
+  var hasBig=G.res.some(function(r){ return r.cls==='c-r'; });
+  $('#gstage').innerHTML=
+   '<svg class="machine" id="mach" viewBox="0 0 120 170">'
+   +'<defs><radialGradient id="dome"><stop offset="0%" stop-color="#fff" stop-opacity=".30"/>'
+   +'<stop offset="100%" stop-color="#c77dff" stop-opacity=".16"/></radialGradient></defs>'
+   +'<rect id="glow" x="4" y="4" width="112" height="162" rx="20" fill="none" stroke="#ffd60a" stroke-width="3"/>'
+   +'<rect x="14" y="78" width="92" height="80" rx="11" fill="#3a1f66" stroke="#5c3a95" stroke-width="2.5"/>'
+   +'<circle cx="60" cy="58" r="44" fill="#1d0f30" stroke="#5c3a95" stroke-width="2.5"/>'
+   +'<circle cx="60" cy="58" r="44" fill="url(#dome)"/>'
+   +'<circle cx="44" cy="62" r="8" fill="#ff5d8f"/><circle cx="66" cy="48" r="8" fill="#4cc9f0"/>'
+   +'<circle cx="76" cy="70" r="8" fill="#ffd60a"/><circle cx="54" cy="78" r="8" fill="#58e08a"/>'
+   +'<circle cx="36" cy="44" r="8" fill="#c77dff"/><circle cx="62" cy="30" r="7" fill="#e0aaff"/>'
+   +'<rect x="50" y="86" width="20" height="4" rx="2" fill="#0e0518"/>'
+   +'<circle id="coin" cx="60" cy="88" r="5" fill="#ffd60a"/>'
+   +'<g id="handle"><circle cx="60" cy="112" r="15" fill="#241440" stroke="#9d4edd" stroke-width="3"/>'
+   +'<rect x="57" y="100" width="6" height="24" rx="3" fill="#c77dff"/></g>'
+   +'<rect x="34" y="134" width="52" height="20" rx="6" fill="#0e0518" stroke="#5c3a95" stroke-width="2"/>'
+   +'<circle id="outcap" cx="60" cy="144" r="8" fill="#e0aaff"/></svg>'
+   +'<button class="btn" id="insert" style="width:100%">コインを入れる</button>'
+   +'<button class="btn sub" id="gskip" style="width:100%">演出をとばす</button>';
+  $('#gskip').onclick=function(){ showCaps(true); };
+  $('#insert').onclick=function(){
+    $('#insert').disabled=true;
+    var el=$('#coin'); if(el) el.classList.add('drop');
+    function at(ms,f){ gTimers.push(setTimeout(f,ms)); }
+    function add(sel,cls){ var e=$(sel); if(e) e.classList.add(cls); }
+    at(600,function(){ add('#handle','spin'); if(hasBig) add('#glow','on'); });
+    at(1700,function(){ add('#mach','shake'); });
+    at(2600,function(){ add('#outcap','out'); });
+    at(3200,function(){ showCaps(false); });
+  };
+}
+function showCaps(skip){
+  clearTimers();
+  $('#gstage').innerHTML='<div style="font-size:13px;color:var(--sub)">'
+    +(skip?'結果':'カプセルをタップして開けよう')+'</div><div id="caps"></div>'
+    +'<button class="btn sub" id="openall" style="width:100%">すべて開く</button>'
+    +'<button class="btn" id="gback" style="width:100%;display:none">もどる</button>';
+  var w=$('#caps');
+  G.res.forEach(function(r,i){
+    var wrap=document.createElement('div'); wrap.className='capw';
+    var d=document.createElement('div');
+    d.className='cap shut '+(skip?r.cls:'c-w'); d.dataset.i=i;
+    var lab=document.createElement('div'); lab.className='lab'; lab.innerHTML='&nbsp;';
+    wrap.appendChild(d); wrap.appendChild(lab);
+    if(skip) revealCap(d,r); else d.onclick=function(){ openCap(d); };
+    w.appendChild(wrap);
+  });
+  $('#openall').onclick=function(){ $$('#caps .cap').forEach(function(d){ if(d.classList.contains('shut')) openCap(d); }); };
+  if(skip){ $('#openall').style.display='none'; $('#gback').style.display=''; }
+  $('#gback').onclick=closeGacha;
+}
+function revealCap(d,r){
+  d.classList.remove('shut','c-w'); d.classList.add('open',r.cls);
+  d.innerHTML='<span class="inner">'+(r.orb?orbSvg(r.orb):r.ic)+'</span>';
+  var lab=d.parentNode&&d.parentNode.querySelector('.lab');
+  if(lab) lab.textContent=r.nm;
+}
+function openCap(d){
+  var r=G.res[+d.dataset.i];
+  revealCap(d,r);
+  if(r.cls==='c-r') toast('✨ '+r.nm);
+  if(!$$('#caps .cap.shut').length){ $('#openall').style.display='none'; $('#gback').style.display=''; }
+}
+function closeGacha(){
+  clearTimers();
+  $('#gstage').style.display='none'; $('#gstage').innerHTML='';
+  $('#gmenu').style.display=''; drawGachaMenu(); hud(); save();
+}
+
+/* ======================= 図鑑 ======================= */
+var orbSel=null;
+function drawOrbs(){
+  var h='<div class="card"><p>オーブはガチャと採掘で手に入る。タップで詳細。</p></div><div class="ogrid">';
+  ORBS.forEach(function(o){
+    var n=S.orbs[o.id];
+    h+='<div class="oc'+(n?'':' z')+'" data-o="'+o.id+'">'+orbSvg(o)
+      +'<div class="nm">'+o.n+'</div><div class="q">×'+n+'</div></div>';
+  });
+  h+='</div><div class="sec">効果</div><div id="odetail"></div>';
+  $('#seg-orb').innerHTML=h;
+  $$('#seg-orb [data-o]').forEach(function(el){
+    el.onclick=function(){ orbSel=el.dataset.o; drawOrbDetail(); };
+  });
+  drawOrbDetail();
+}
+function drawOrbDetail(){
+  var list = orbSel?[OB[orbSel]]:ORBS;
+  $('#odetail').innerHTML=list.map(function(o){
+    var c='';
+    if(o.cnt==='all') c='🛡 全マインを予防';
+    else if(o.cnt==='any') c='💉 全マインを部分解除';
+    else if(o.cnt==='black2') c='👻 ブラック封鎖を無力化';
+    else if(o.cnt==='flare2') c='解除：フレア・サンダー';
+    else if(o.cnt) c='解除：'+MINES[o.cnt].n;
+    return '<div class="odet">'+orbSvg(o)+'<div class="b"><h4>'+o.n+'</h4>'
+      +'<div class="e">'+o.e+'</div>'
+      +(c?'<div class="c">'+c+'</div>':'')
+      +'<div class="q">所持 '+S.orbs[o.id]+'個</div></div></div>';
+  }).join('')+(orbSel?'<button class="btn sub wide" id="oall">すべて表示</button>':'');
+  if($('#oall')) $('#oall').onclick=function(){ orbSel=null; drawOrbDetail(); };
+}
+$$('[data-seg]').forEach(function(b){
+  b.onclick=function(){
+    $$('[data-seg]').forEach(function(x){ x.classList.toggle('on',x===b); });
+    var s=b.dataset.seg;
+    $('#seg-orb').style.display=s==='orb'?'':'none';
+    $('#seg-ch').style.display=s==='ch'?'':'none';
+    if(s==='orb') drawOrbs();
+    if(s==='ch') $('#seg-ch').innerHTML='<div class="card" style="text-align:center">'
+      +'<div style="font-size:34px">🚧</div><h3>準備中</h3>'
+      +'<p>キャラクターは属性2つの組み合わせで作られる予定。<br>オーブを集めて生成できるようになる。</p></div>';
+  };
+});
+
+/* ======================= 設定 ======================= */
+var LP_PRESETS=[200,300,500,700,1000];
+function drawLp(){
+  $('#lptxt').textContent='現在：'+S.longMs+'ミリ秒。短くすると素早く旗を立てられるが、'
+    +'盤面をなぞる操作で誤爆しやすくなる。';
+  $('#lpseg').innerHTML=LP_PRESETS.map(function(v){
+    return '<button data-lp="'+v+'" class="'+(S.longMs===v?'on':'')+'">'+(v/1000).toFixed(v%1000?1:0)+'秒</button>';
+  }).join('');
+  $$('#lpseg [data-lp]').forEach(function(b){
+    b.onclick=function(){ S.longMs=+b.dataset.lp; drawLp(); save();
+      toast('長押しを '+S.longMs+'ミリ秒にした'); };
+  });
+}
+function drawSettings(){ drawLp(); }
+$('#skiptg').onclick=function(){ S.skipGacha=!S.skipGacha; hud(); save(); };
+$('#refill').onclick=function(){
+  ORBS.forEach(function(o){ if(S.orbs[o.id]<30) S.orbs[o.id]=30; });
+  S.dia=Math.max(S.dia,3000); S.t1=Math.max(S.t1,3); S.t10=Math.max(S.t10,1);
+  toast('🧪 全オーブ30個・💎3000・ガチャ券を補充した');
+  hud(); save();
+};
+$('#emptyorbs').onclick=function(){
+  confirmDlg('🧪','オーブを全部0にする',
+    '20種すべての所持数を0にする。<br>💎・チケット・盤面はそのまま。','0にする',function(){
+    ORBS.forEach(function(o){ S.orbs[o.id]=0; });
+    if(mode.indexOf('orb:')===0||mode==='ice'){ iceSet=null; icePhase=null; setMode('dig'); }
+    toast('🧪 オーブを全部0にした'); hud(); save(); render();
+  });
+};
+$('#boardreset').onclick=function(){
+  confirmDlg('🧪','盤面を作り直す',
+    '掘った跡・封鎖・旗・金庫・しおりが全部消えて、地雷の配置も変わる。<br>'
+   +'💎・オーブ・チケット・連続日数・実績は残る。','作り直す',function(){
+    S.seed=(Math.random()*1e9)|0;
+    S.opened={}; S.flags={}; S.known={}; S.seal={}; S.blasts={}; S.nextBlast=1;
+    S.vaults={}; S.marks={}; S.poison=[];
+    S.safeStreak=0; S.safeHit={};
+    S.shieldLeft=0; S.dynaLeft=0; S.stoneArmed=false; S.leafLeft=0; S.ghostUntil=0;
+    iceSet=null; icePhase=null; setMode('dig');
+    centerOn(0,0,46);
+    toast('🧪 盤面を作り直した');
+    hud(); save();
+  });
+};
+$('#export').onclick=function(){
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));
+  a.download='habitminer.json'; a.click();
+};
+$('#reset').onclick=function(){
+  confirmDlg('⚠️','全データを消す','元に戻せない。','消す',function(){
+    localStorage.removeItem('habitminer_v3'); location.reload(); });
+};
+
+/* ======================= タブ ======================= */
+var PANEL={gacha:'#p-gacha', col:'#p-col', rm:'#p-rm', set:'#p-set'};
+$$('#tabs button').forEach(function(b){
+  b.onclick=function(){
+    var t=b.dataset.tab;
+    $$('#tabs button').forEach(function(x){ x.classList.toggle('on',x===b); });
+    $$('.panel').forEach(function(p){ p.classList.remove('show'); });
+    if(t==='play') return;
+    if(t==='col') drawOrbs();
+    if(t==='rm') drawRoadmap();
+    if(t==='set') drawSettings();
+    clearTimers();
+    if(t==='gacha'){ $('#gmenu').style.display=''; $('#gstage').style.display='none'; $('#gstage').innerHTML=''; drawGachaMenu(); }
+    $(PANEL[t]).classList.add('show');
+  };
+});
+$$('[data-close]').forEach(function(b){
+  b.onclick=function(){
+    $$('.panel').forEach(function(p){ p.classList.remove('show'); });
+    $$('#tabs button').forEach(function(x){ x.classList.toggle('on',x.dataset.tab==='play'); });
+  };
+});
+
+/* ======================= 起動 ======================= */
+window.addEventListener('resize',resize);
+rollDay(); checkTracks(); resize(); hud(); setMode('dig'); save();
+
+/* ======================= オフライン対応 ======================= */
+var APP_VER='2026-11-16a';
+$('#vertxt').textContent='バージョン '+APP_VER
+  +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
+
+function showUpdate(reg){
+  var el=$('#upd'); el.classList.add('show');
+  $('#updno').onclick=function(){ el.classList.remove('show'); };
+  $('#updgo').onclick=function(){
+    el.classList.remove('show');
+    save();                                   // 先に保存してから入れ替える
+    if(reg.waiting) reg.waiting.postMessage('skipWaiting');
+  };
+}
+if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+  var swReloading=false;
+  navigator.serviceWorker.addEventListener('controllerchange',function(){
+    if(swReloading) return; swReloading=true; save(); location.reload();
+  });
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      function watch(w){
+        if(!w) return;
+        w.addEventListener('statechange',function(){
+          if(w.state==='installed' && navigator.serviceWorker.controller) showUpdate(reg);
+        });
+      }
+      if(reg.waiting && navigator.serviceWorker.controller) showUpdate(reg);
+      watch(reg.installing);
+      reg.addEventListener('updatefound',function(){ watch(reg.installing); });
+      reg.update().catch(function(){});       // 起動のたびに新版を確認
+    }).catch(function(){});
+  });
+}
+
+})();
+</script>
+</body>
+</html>
