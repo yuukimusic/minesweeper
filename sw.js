@@ -1,8 +1,8 @@
-/* 無限坑道 — オフライン用 Service Worker
+/* Purple Mine ∞ — オフライン用 Service Worker
    更新したら VERSION の日付を変えること。古いキャッシュは自動で消える。 */
-var VERSION = '2026-11-18b';
+var VERSION = '2026-11-18c';
 var CACHE   = 'mugen-kodo-' + VERSION;
-var ASSETS  = ['./', './index.html'];
+var ASSETS  = ['./', './index.html', './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function(e){
   // すぐには切り替えない。ページ側が「更新」を押すまで待機する
