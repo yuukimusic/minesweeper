@@ -168,7 +168,8 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
   font-size:13px;line-height:1.75;color:var(--txt);min-height:96px}
 .tsay h3{font-size:15px;color:var(--pri3);margin-bottom:4px}
 .tsay b{color:#fff}
-#tcv{display:block;margin:14px auto 6px;border-radius:10px;touch-action:none;
+#twrap{position:relative;width:max-content;margin:14px auto 6px}
+#tcv{display:block;border-radius:10px;touch-action:none;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 #tmsg{text-align:center;font-size:12.5px;line-height:1.6;min-height:22px;color:var(--sub);margin:4px 2px 10px}
 #ttool{display:flex;justify-content:center;margin-bottom:10px}
@@ -397,30 +398,22 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
       <p id="skiptxt"></p>
       <button class="btn sub wide" id="skiptg">切り替える</button>
     </div>
-    <div class="sec">テストプレイ用</div>
-    <div class="card">
-      <h3>🧪 補充</h3>
-      <p>全オーブを30個、💎3000、ガチャ券を補充する。<br>本番では外す予定の機能。</p>
-      <button class="btn wide" id="refill">補充する</button>
-      <button class="btn sub wide" id="emptyorbs">オーブを全部0にする</button>
-    </div>
-    <div class="card">
-      <h3>🧪 盤面リセット</h3>
-      <p>掘った跡・封鎖・旗・金庫・しおりを全部消して、地雷の配置も作り直す。<br>
-      💎・オーブ・チケット・連続日数・実績はそのまま残る。</p>
-      <button class="btn wide" id="boardreset">盤面を作り直す</button>
-    </div>
     <div class="sec">データ</div>
+    <div class="card">
+      <h3>📦 データの引き継ぎ</h3>
+      <p>機種変更や、ホーム画面のアイコンを追加し直すときに使う。<br>
+      ①前のほうで<b>書き出し</b>てファイルに保存 → ②新しいほうで<b>読み込み</b>でそのファイルを選ぶ。</p>
+      <button class="btn wide" id="export">データを書き出す</button>
+      <button class="btn sub wide" id="import">データを読み込む</button>
+      <input type="file" id="importf" accept=".json,application/json,text/plain" style="display:none">
+    </div>
     <div class="card">
       <h3>🔄 データを初期化</h3>
       <p>はじめて遊ぶ状態に戻す。💎・オーブ・ガチャ券・盤面・記録・実績・あそびかたの進み具合が<b>すべて消える</b>。<br>
       初期化後は 💎0 からスタートし、あそびかたを全部クリアすると <b>💎100＋🎫ガチャ券5枚</b> がもらえる。</p>
       <button class="btn danger wide" id="reset">データを初期化する</button>
     </div>
-    <div class="card">
-      <p id="vertxt"></p>
-      <button class="btn sub wide" id="export">JSONで書き出し</button>
-    </div>
+    <div class="card"><p id="vertxt"></p></div>
   </div>
 </div>
 
@@ -429,7 +422,7 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
   <div class="pbody">
     <div id="tchips"></div>
     <div class="tsay"><h3 id="ttitle"></h3><div id="tsay"></div></div>
-    <canvas id="tcv"></canvas>
+    <div id="twrap"><canvas id="tcv"></canvas></div>
     <div id="tmsg"></div>
     <div id="ttool"></div>
     <div class="trow" id="tctl">
@@ -3370,39 +3363,43 @@ function drawLp(){
 }
 function drawSettings(){ drawLp(); drawTutCard(); }
 $('#skiptg').onclick=function(){ S.skipGacha=!S.skipGacha; hud(); save(); };
-$('#refill').onclick=function(){
-  ORBS.forEach(function(o){ if(S.orbs[o.id]<30) S.orbs[o.id]=30; });
-  S.dia=Math.max(S.dia,3000); S.t1=Math.max(S.t1,3); S.t10=Math.max(S.t10,1);
-  toast('🧪 全オーブ30個・💎3000・ガチャ券を補充した');
-  hud(); save();
-};
-$('#emptyorbs').onclick=function(){
-  confirmDlg('🧪','オーブを全部0にする',
-    '20種すべての所持数を0にする。<br>💎・チケット・盤面はそのまま。','0にする',function(){
-    ORBS.forEach(function(o){ S.orbs[o.id]=0; });
-    if(mode.indexOf('orb:')===0||mode==='ice'){ iceSet=null; icePhase=null; setMode('dig'); }
-    toast('🧪 オーブを全部0にした'); hud(); save(); render();
-  });
-};
-$('#boardreset').onclick=function(){
-  confirmDlg('🧪','盤面を作り直す',
-    '掘った跡・封鎖・旗・金庫・しおりが全部消えて、地雷の配置も変わる。<br>'
-   +'💎・オーブ・チケット・連続日数・実績は残る。','作り直す',function(){
-    S.seed=(Math.random()*1e9)|0;
-    S.opened={}; S.flags={}; S.known={}; S.seal={}; S.blasts={}; S.nextBlast=1;
-    S.vaults={}; S.marks={}; S.poison=[];
-    S.safeStreak=0; S.safeHit={};
-    S.shieldLeft=0; S.dynaLeft=0; S.stoneArmed=false; S.leafLeft=0; S.ghostUntil=0;
-    iceSet=null; icePhase=null; setMode('dig');
-    centerOn(0,0,46);
-    toast('🧪 盤面を作り直した');
-    hud(); save();
-  });
-};
+function ymd(){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
 $('#export').onclick=function(){
-  var a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([JSON.stringify(S)],{type:'application/json'}));
-  a.download='habitminer.json'; a.click();
+  save();
+  var name='purple-mine-'+ymd()+'.json', blob=new Blob([JSON.stringify(S)],{type:'application/json'});
+  var file=null; try{ file=new File([blob],name,{type:'application/json'}); }catch(e){}
+  /* iPhone は共有シートから「"ファイル"に保存」できるので、使えるときはそちらを出す */
+  if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+    navigator.share({files:[file],title:'Purple Mine ∞ のデータ'}).catch(function(){});
+    return;
+  }
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  toast('📦 '+name+' を保存した');
+};
+$('#import').onclick=function(){ $('#importf').value=''; $('#importf').click(); };
+$('#importf').onchange=function(){
+  var f=this.files&&this.files[0]; if(!f) return;
+  var rd=new FileReader();
+  rd.onload=function(){
+    var o=null;
+    try{ o=JSON.parse(rd.result); }catch(e){}
+    if(!o||typeof o!=='object'||!o.opened||!o.orbs||o.v===undefined){
+      dlg('⚠️','読み込めなかった','このファイルは Purple Mine ∞ のデータではないみたい。<br>「データを書き出す」で保存したファイルを選んでね。',[{t:'OK'}]); return;
+    }
+    var orbs=0; for(var k in o.orbs) orbs+=o.orbs[k]||0;
+    confirmDlg('📦','このデータを読み込む？',
+      '💎 <b>'+fmt(o.dia||0)+'</b>　オーブ <b>'+fmt(orbs)+'</b>個　🎫 <b>'+fmt(o.t1||0)+'</b>枚<br>'
+      +'掘ったマス <b>'+fmt(o.totalOpened||0)+'</b>　連続ログイン <b>'+(o.streak||0)+'</b>日<br><br>'
+      +'<b style="color:#ff5d8f">今のデータは上書きされて消える。</b>','読み込む',function(){
+        /* 再読み込み直前の自動保存で上書きされないよう、先に S 自体を差し替える */
+        S=o;
+        try{ localStorage.setItem('habitminer_v3',JSON.stringify(S)); }
+        catch(e){ toast('⚠️ 保存できなかった'); return; }
+        location.reload();
+      });
+  };
+  rd.readAsText(f);
 };
 $('#reset').onclick=function(){
   confirmDlg('⚠️','データを初期化する？','💎・オーブ・ガチャ券・盤面・記録・実績が<b>すべて消える</b>。<br>元には戻せない。','初期化する',function(){
@@ -3695,9 +3692,17 @@ function tutFlagAt(x,y){
   var k=tk(x,y), st=TUT[T.i].steps[T.step];
   if(st.btn||st.tool||st.only||(TUT[T.i].reach&&T.step===0)) return;
   if(T.op[k]!==undefined||T.seal[k]) return;
-  if(T.flag[k]){ delete T.flag[k]; tutMsg('旗を外した'); }
-  else { T.flag[k]=1; tutMsg('🚩 旗を立てた','#ff5d8f'); if(navigator.vibrate) try{ navigator.vibrate(15); }catch(e){} }
+  if(T.flag[k]){ delete T.flag[k]; tutRing(x,y,true); tutMsg('旗を外した'); }
+  else { T.flag[k]=1; tutRing(x,y); tutMsg('🚩 旗を立てた','#ff5d8f'); if(navigator.vibrate) try{ navigator.vibrate(15); }catch(e){} }
   T.hint=null; tutCheck();
+}
+function tutRing(x,y,off){                     // 本番と同じ「旗を立てた／外した」リング
+  var w=$('#twrap');
+  ['','d2'].forEach(function(c){
+    var d=document.createElement('div'); d.className='ring '+c+(off?' off':'');
+    d.style.left=(x*tutCS+tutCS/2)+'px'; d.style.top=(y*tutCS+tutCS/2)+'px'; w.appendChild(d);
+    setTimeout(function(){ if(d.parentNode) d.parentNode.removeChild(d); },800);
+  });
 }
 function tutHint(){
   if(!T||T.cleared) return;
@@ -3824,7 +3829,7 @@ if(!S.tutSeen){
 }
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-18c';
+var APP_VER='2026-11-18d';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 
