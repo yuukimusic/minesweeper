@@ -1,6 +1,6 @@
 /* 無限坑道 — オフライン用 Service Worker
    更新したら VERSION の日付を変えること。古いキャッシュは自動で消える。 */
-var VERSION = '2026-11-17a';
+var VERSION = '2026-11-18a';
 var CACHE   = 'mugen-kodo-' + VERSION;
 var ASSETS  = ['./', './index.html'];
 

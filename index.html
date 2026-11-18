@@ -154,6 +154,32 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
   border-radius:11px;padding:9px;font-family:inherit;font-size:13px;font-weight:700}
 .seg button.on{background:var(--pri);border-color:var(--pri3);color:#fff}
 
+#p-tut{z-index:60}
+#tchips{display:flex;gap:6px;margin-bottom:10px}
+#tchips button{flex:1;height:32px;border-radius:9px;border:2px solid var(--line);background:var(--panel);
+  color:var(--sub);font-weight:800;font-size:13px;font-family:inherit}
+#tchips button.ok{color:#58e08a}
+#tchips button.on{border-color:var(--pri3);background:var(--pri);color:#fff}
+.tsay{background:var(--panel);border:2px solid var(--line);border-radius:14px;padding:11px 13px;
+  font-size:13px;line-height:1.75;color:var(--txt);min-height:96px}
+.tsay h3{font-size:15px;color:var(--pri3);margin-bottom:4px}
+.tsay b{color:#fff}
+#tcv{display:block;margin:14px auto 6px;border-radius:10px;touch-action:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#tmsg{text-align:center;font-size:12.5px;line-height:1.6;min-height:22px;color:var(--sub);margin:4px 2px 10px}
+#ttool{display:flex;justify-content:center;margin-bottom:10px}
+#ttool button{display:flex;align-items:center;gap:8px;background:var(--panel);border:2px solid var(--line);
+  border-radius:12px;padding:6px 14px 6px 6px;color:var(--txt);font:inherit;font-weight:800;font-size:13px;text-align:left}
+#ttool button small{display:block;font-size:10px;color:var(--sub);font-weight:700}
+#ttool button svg{display:block}
+#ttool button.on{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,214,10,.3)}
+.trow{display:flex;gap:8px}
+.trow .btn{flex:1}
+.tleg{display:grid;grid-template-columns:34px 1fr;gap:7px 10px;align-items:center;margin-top:9px;font-size:12px}
+.tleg canvas{width:34px;height:34px;border-radius:6px;display:block}
+.tleg .ob{display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin-top:1px}
+.tleg .ob svg{display:block}
+.tleg small{color:var(--sub);font-size:10px;margin-left:4px}
 #dlg{position:fixed;inset:0;background:rgba(5,2,10,.78);z-index:90;display:none;
   align-items:center;justify-content:center;padding:22px;backdrop-filter:blur(3px)}
 #dlg.show{display:flex}
@@ -349,6 +375,12 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
 <div class="panel" id="p-set">
   <div class="ptitle">設定<button class="x" data-close>✕</button></div>
   <div class="pbody">
+    <div class="sec">はじめに</div>
+    <div class="card">
+      <h3>📖 あそびかた</h3>
+      <p id="tutsum"></p>
+      <button class="btn wide" id="tutgo">あそびかたを始める</button>
+    </div>
     <div class="sec">操作</div>
     <div class="card">
       <h3>旗を立てる長押しの長さ</h3>
@@ -379,6 +411,26 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
       <p id="vertxt"></p>
       <button class="btn sub wide" id="export">JSONで書き出し</button>
       <button class="btn danger wide" id="reset">全データを消す</button>
+    </div>
+  </div>
+</div>
+
+<div class="panel" id="p-tut">
+  <div class="ptitle">📖 あそびかた<button class="x" id="tutx">✕</button></div>
+  <div class="pbody">
+    <div id="tchips"></div>
+    <div class="tsay"><h3 id="ttitle"></h3><div id="tsay"></div></div>
+    <canvas id="tcv"></canvas>
+    <div id="tmsg"></div>
+    <div id="ttool"></div>
+    <div class="trow" id="tctl">
+      <button class="btn sub" id="thint">💡 ヒント</button>
+      <button class="btn sub" id="treset">↺ やり直す</button>
+      <button class="btn" id="tnext"></button>
+    </div>
+    <div class="trow" id="tclear" style="display:none">
+      <button class="btn sub" id="tagain">もう一度</button>
+      <button class="btn" id="tgo"></button>
     </div>
   </div>
 </div>
@@ -543,7 +595,7 @@ function fresh(){
     pity:0, reached:{}, safeHit:{}, pending:{}, claimCount:{}, ever:{},
     shieldLeft:0, dynaLeft:0, stoneArmed:false, revive:0,
     leafLeft:0, leafMode:'dia', bell:0, poison:[],
-    skipGacha:false, longMs:500
+    skipGacha:false, longMs:500, tut:{}, tutRew:0, tutSeen:0
   };
 }
 function load(){
@@ -3242,7 +3294,7 @@ function drawLp(){
       toast('長押しを '+S.longMs+'ミリ秒にした'); };
   });
 }
-function drawSettings(){ drawLp(); }
+function drawSettings(){ drawLp(); drawTutCard(); }
 $('#skiptg').onclick=function(){ S.skipGacha=!S.skipGacha; hud(); save(); };
 $('#refill').onclick=function(){
   ORBS.forEach(function(o){ if(S.orbs[o.id]<30) S.orbs[o.id]=30; });
@@ -3306,12 +3358,386 @@ $$('[data-close]').forEach(function(b){
   };
 });
 
+
+/* ======================= あそびかた（チュートリアル） =======================
+   本番の盤面・セーブとは完全に別の、手作りの小さな盤面で練習する。
+   盤面の文字： '.'=未開放の安全マス  '*'=爆弾  'o'=はじめから開いているマス
+   どの盤面も「推理だけで必ず解ける」ことを確認済み。 */
+var TUT_REWARD=100;
+function tk(x,y){ return x+','+y; }
+var TUT=[
+ { t:'数字のルール',
+   rows:['ooooo','ooooo','ooo*.','ooo..'],
+   steps:[
+    { say:'開いたマスの<b>数字</b>は、<b>まわり8マスにある爆弾の数</b>。<br>光っている「1」のまわりで、まだ開いていないマスは<b>1つだけ</b>。<br>→ つまり、<b>そこが爆弾</b>。',
+      hi:[[2,1]], hi2:[[3,2]], btn:'なるほど' },
+    { say:'爆弾の場所がわかれば、<b>ほかの数字</b>も読める。<br>「1」のまわりの爆弾は<b>もう見つかっている</b> → 残りのマスは<b>安全</b>。<br><b>爆弾以外の3マスを、タップで全部開けよう。</b>',
+      ok:function(T){ return tutSafeLeft(T)===0; } }
+   ],
+   hint:[
+    {go:[4,2], c:[[3,1],[4,1]], txt:'この「1」のまわりの爆弾は、さっきの1個だけ。だから右どなりのマスは安全。'},
+    {go:[3,3], c:[[2,2],[2,3]], txt:'この「1」も、爆弾はもう見つかっている。だから下のマスは安全。'},
+    {go:[4,3], c:[[4,2],[3,3]], txt:'開いたマスの数字も同じように読める。爆弾は見つかり済み → 右下は安全。'}
+   ],
+   done:'数字＝まわり8マスの爆弾の数。<br>「爆弾の数がもう足りている数字」のまわりは安全、が基本。' },
+
+ { t:'0は一気に広がる',
+   rows:['.....*','......','......','*.....','....*.'],
+   steps:[
+    { say:'数字が<b>0</b>（まわりに爆弾が1つもない）のマスを開けると、<br>まわりのマスも<b>自動で一気に</b>開く。<br><b>光っているマスをタップしてみよう。</b>',
+      hi:[[2,1]], only:[2,1], onlyMsg:'まずは光っているマスをタップしてね',
+      ok:function(T){ return T.op[tk(2,1)]!==undefined; } }
+   ],
+   done:'空白のマスが「0」。数字が出たところで広がりが止まる。<br>本番の最初の一手も、この広がりから始まる。' },
+
+ { t:'旗を立てる',
+   rows:['ooooo','ooooo','o*o*o','ooooo'],
+   steps:[
+    { say:'爆弾だとわかったマスは、<b>長押し</b>で🚩<b>旗</b>を立てて目印にしよう。<br>旗のマスはタップしても開かないので、うっかり踏まなくなる。<br><b>2つの爆弾に旗を立てよう。</b>',
+      ok:function(T){ return T.flag[tk(1,2)]&&T.flag[tk(3,2)]; } }
+   ],
+   hint:[
+    {go:[1,2], act:'flag', c:[[0,1],[1,1],[2,1]], txt:'まわりの数字が「1」で、開いていないのはこのマスだけ → 爆弾。指を置いたまま待つと旗が立つ。'},
+    {go:[3,2], act:'flag', c:[[3,1],[4,1],[4,2]], txt:'こっちも同じ。長押しで旗を立てよう。'}
+   ],
+   done:'旗は「ここは爆弾」という自分用のメモ。<br>もう一度長押しすると外せる。長押しの長さは設定で変えられる。' },
+
+ { t:'推理の型「1-2-1」',
+   rows:['.*.*.','ooooo','ooooo'],
+   steps:[
+    { say:'数字を<b>組み合わせる</b>と、もっとわかる。<br>上の段のどこかに爆弾が隠れている。<br><b>安全な3マスを開けよう。</b>詰まったら「ヒント」。',
+      ok:function(T){ return tutSafeLeft(T)===0; } }
+   ],
+   hint:[
+    {go:[2,0], c:[[0,1],[1,1]], txt:'左端の「1」は2マスを見ていて、となりの「1」は3マスを見ている。爆弾の数はどちらも1個 → 増えた<b>右上のマスは安全</b>。'},
+    {go:[0,0], c:[[2,1],[0,1]], txt:'真ん中の「2」のまわりで残るのは2マスだけ → 両方爆弾。だから左端の「1」の爆弾は見つかり済み → <b>左上は安全</b>。'},
+    {go:[4,0], c:[[2,1],[4,1]], txt:'右側も同じ。右端の「1」の爆弾は見つかり済み → <b>右上は安全</b>。'}
+   ],
+   done:'「1-2-1」と並んだら、<b>2の両どなりが爆弾、真ん中は安全</b>。<br>よく出てくる型なので覚えておくと強い。' },
+
+ { t:'となりしか掘れない',
+   rows:['oo....','oo*...','oo....','oo*...','oo....'],
+   reach:true,
+   steps:[
+    { say:'ここからは<b>無限坑道だけのルール</b>。<br>掘れるのは、<b>もう開いたマスのとなり</b>だけ。<br>試しに、光っている<b>遠くのマス</b>をタップしてみよう。',
+      hi:[[5,0]] },
+    { say:'遠くは掘れない。掘れるのは、<b>光っているとなりのマス</b>だけ。<br>（遠くへ飛べるのは☁️スカイのオーブだけ。スタート地点のまわりも例外）<br>レッスン4の推理で、<b>安全なマスを1つ掘ろう。</b>',
+      front:true,
+      ok:function(T){ return T.opened>T.base; } }
+   ],
+   hint:[
+    {go:[2,2], c:[[1,0],[1,1]], txt:'レッスン4と同じ型。上の「1」と、その下の「1」を比べると、増えた<b>真ん中のマスは安全</b>。'}
+   ],
+   done:'無限坑道は、開いたところから<b>少しずつ掘り進める</b>ゲーム。<br>行き止まりになったら、推理かオーブで道を作ろう。' },
+
+ { t:'封鎖とオーブ',
+   rows:['ooooooo','ooooooo','ooooooo','ooo*ooo','ooooooo','ooooooo','ooooooo'],
+   known:[[3,3]],
+   steps:[
+    { say:'爆弾（<b>マイン</b>）を踏むと、まわりが<b>封鎖</b>されて掘れなくなる。<br>本番で踏むと<b>無事故記録が0に戻る</b>ので要注意。<br>ここは練習。<b>光っているマインをわざと踏んでみよう。</b>',
+      hi:[[3,3]], only:[3,3], onlyMsg:'光っているマインをタップしてね' },
+    { say:'白い岩は<b>ノーマル封鎖</b>。🔨<b>ハンマー</b>などのオーブで壊せる。<br>（オーブはガチャや採掘で手に入る）<br><b>下の🔨を選んでから、封鎖をタップしよう。</b>',
+      tool:'hammer' },
+    { say:'封鎖は5種類。<b>色を見れば、効くオーブがわかる</b>。<br><div class="tleg" id="tleg"></div>',
+      btn:'わかった' }
+   ],
+   done:'マインを踏んでも終わりじゃない。<br>封鎖の色に合うオーブで道を開こう。' },
+
+ { t:'💎金庫',
+   rows:['.......','.*.*...','......*','.......','.......','.......','.......'],
+   vault:[3,3,2],
+   steps:[
+    { say:'坑道のあちこちに<b>💎金庫</b>（5×5）が埋まっている。<br>中のマスを掘ると<b>水色の枠</b>が出る。<br><b>光っているマスを掘ってみよう。</b>',
+      hi:[[3,3]], only:[3,3], onlyMsg:'まずは光っているマスをタップしてね',
+      ok:function(T){ return T.vaultFound; } },
+    { say:'枠の中の<b>爆弾以外を全部</b>掘れば攻略！<br>上のほうに3マス残っている。<br><b>レッスン4の型</b>を使って開けよう。',
+      ok:function(T){ return tutVaultDone(T); } }
+   ],
+   hint:[
+    {go:[2,1], c:[[0,2],[1,2]], txt:'左の「1」2つを比べよう。となりの「1」だけが見ているマスが増えたのに数は同じ → <b>そのマスは安全</b>。'},
+    {go:[4,1], c:[[2,2],[3,2]], txt:'「2」のまわりの爆弾は2個とも決まった → 右どなりの「1」の爆弾は見つかり済み → <b>安全</b>。'},
+    {go:[5,1], c:[[4,2],[4,1]], txt:'この「1」の爆弾も見つかり済み。だから<b>右のマスは安全</b>。'}
+   ],
+   done:'金庫を攻略すると本番では<b>💎50</b>。<br>そのあと、まわり15×15の<b>ダイヤチャレンジ</b>に挑戦できる。' }
+];
+
+var T=null, tutOpen=false, tutCS=48;
+function tutNum(T,x,y){
+  var n=0; for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+    if((dx||dy)&&T.mine[tk(x+dx,y+dy)]) n++; } return n;
+}
+function tutIn(T,x,y){ return x>=0&&y>=0&&x<T.W&&y<T.H; }
+function tutSafeLeft(T){ var n=0;
+  for(var y=0;y<T.H;y++) for(var x=0;x<T.W;x++){ var k=tk(x,y); if(!T.mine[k]&&T.op[k]===undefined) n++; } return n; }
+function tutVaultDone(T){ var v=TUT[T.i].vault;
+  for(var x=v[0]-v[2];x<=v[0]+v[2];x++) for(var y=v[1]-v[2];y<=v[1]+v[2];y++){
+    var k=tk(x,y); if(!T.mine[k]&&(T.op[k]===undefined||T.seal[k])) return false; } return true; }
+function tutReach(T,x,y){
+  for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+    if((dx||dy)&&T.op[tk(x+dx,y+dy)]!==undefined&&!T.seal[tk(x+dx,y+dy)]) return true; } return false;
+}
+function tutOpenCell(T,x,y){                       // 0なら広がる
+  var st=[[x,y]];
+  while(st.length){ var c=st.pop(), k=tk(c[0],c[1]);
+    if(!tutIn(T,c[0],c[1])||T.op[k]!==undefined||T.mine[k]) continue;
+    delete T.flag[k];
+    var n=tutNum(T,c[0],c[1]); T.op[k]=n; T.opened++;
+    if(n===0) for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if(dx||dy) st.push([c[0]+dx,c[1]+dy]);
+  }
+}
+function tutSnap(T){ T.snap=JSON.stringify({op:T.op,flag:T.flag,seal:T.seal,vf:T.vaultFound,o:T.opened}); }
+function tutRestore(T){ var s=JSON.parse(T.snap); T.op=s.op; T.flag=s.flag; T.seal=s.seal; T.vaultFound=s.vf; T.opened=s.o; }
+
+function tutBuild(i){
+  var L=TUT[i], rows=L.rows;
+  T={i:i, step:0, W:rows[0].length, H:rows.length, mine:{}, op:{}, flag:{}, seal:{}, known:{},
+     opened:0, vaultFound:false, tool:null, sel:false, busy:false, cleared:false, hint:null, boom:null};
+  rows.forEach(function(r,y){ r.split('').forEach(function(c,x){ if(c==='*') T.mine[tk(x,y)]=1; }); });
+  rows.forEach(function(r,y){ r.split('').forEach(function(c,x){ if(c==='o') T.op[tk(x,y)]=tutNum(T,x,y); }); });
+  (L.known||[]).forEach(function(c){ T.known[tk(c[0],c[1])]=1; });
+  var maxW=Math.min(window.innerWidth,520)-44;
+  tutCS=Math.max(30,Math.min(56,Math.floor(maxW/T.W)));
+  var cv=$('#tcv'), d=window.devicePixelRatio||1;
+  cv.width=T.W*tutCS*d; cv.height=T.H*tutCS*d; cv.style.width=(T.W*tutCS)+'px'; cv.style.height=(T.H*tutCS)+'px';
+  tutStep();
+}
+function tutStep(){
+  var L=TUT[T.i], st=L.steps[T.step];
+  T.base=T.opened; T.hint=null; T.tool=null; T.sel=false; tutSnap(T);
+  $('#ttitle').textContent=(T.i+1)+'. '+L.t;
+  $('#tsay').innerHTML=st.say;
+  $('#tmsg').textContent=''; $('#tmsg').style.color='';
+  $('#tnext').style.display=st.btn?'':'none'; $('#tnext').textContent=st.btn||'';
+  $('#thint').style.display=L.hint&&!st.btn&&!st.hi?'':'none';
+  $('#tclear').style.display='none'; $('#tctl').style.display='';
+  var tb=$('#ttool');
+  if(st.tool){ T.tool=st.tool; var o=OB[st.tool];
+    tb.innerHTML='<button id="ttoolb">'+orbSvg(o,30)+'<span>'+o.n+'を使う<small>練習用・減らない</small></span></button>';
+    tb.style.display='';
+    $('#ttoolb').onclick=function(){ T.sel=!T.sel; this.classList.toggle('on',T.sel);
+      tutMsg(T.sel?'封鎖をタップしよう':'',''); };
+  }else{ tb.style.display='none'; tb.innerHTML=''; }
+  if($('#tleg')) tutLegend();
+  tutChips();
+}
+function tutNext(){
+  var L=TUT[T.i];
+  if(T.step+1<L.steps.length){ T.step++; tutStep(); return; }
+  tutClear();
+}
+function tutCheck(){
+  var st=TUT[T.i].steps[T.step];
+  if(st.ok&&st.ok(T)){ T.busy=true; setTimeout(function(){ T.busy=false; tutNext(); },550); }
+}
+function tutClear(){
+  var L=TUT[T.i]; T.cleared=true; T.hint=null;
+  if(!S.tut) S.tut={};
+  var first=!S.tut[T.i]; S.tut[T.i]=1;
+  $('#tsay').innerHTML='<b style="color:#58e08a">✓ クリア！</b><br>'+L.done;
+  $('#tmsg').textContent=''; $('#ttool').style.display='none';
+  $('#tctl').style.display='none'; $('#tclear').style.display='';
+  $('#tgo').textContent=T.i<TUT.length-1?'次のレッスンへ ▶':'あそびかたを終える';
+  var all=TUT.every(function(_,j){ return S.tut[j]; });
+  if(all&&!S.tutRew){
+    S.tutRew=1; S.dia+=TUT_REWARD; hud();
+    setTimeout(function(){ dlg('🎓','あそびかた 全クリア！','7つのレッスンをすべて終えた。<br>ごほうびに <b>💎'+TUT_REWARD+'</b>！<br>さっそく本番の坑道を掘ってみよう。',[{t:'OK'}]); },400);
+  }
+  if(first) save();
+  tutChips();
+}
+function tutChips(){
+  $('#tchips').innerHTML=TUT.map(function(L,j){
+    return '<button data-tj="'+j+'" class="'+(j===T.i?'on ':'')+(S.tut&&S.tut[j]?'ok':'')+'">'+(S.tut&&S.tut[j]?'✓':(j+1))+'</button>'; }).join('');
+  $$('#tchips [data-tj]').forEach(function(b){ b.onclick=function(){ tutBuild(+b.dataset.tj); }; });
+}
+function tutMsg(m,col){ $('#tmsg').innerHTML=m; $('#tmsg').style.color=col||''; }
+function tutLegend(){
+  var rows=[['normal','ノーマル',['hammer','sword','ninja'],'💎でも可'],['flare','フレア',MINES.flare.by,''],
+            ['cold','コールド',MINES.cold.by,''],['thunder','サンダー',MINES.thunder.by,''],['black','ブラック',MINES.black.by.concat(['ghost']),'👻は無力化']];
+  $('#tleg').innerHTML=rows.map(function(r){
+    return '<canvas data-st="'+r[0]+'"></canvas><div><b>'+r[1]+'</b><div class="ob">'
+      +r[2].map(function(id){ return orbSvg(OB[id],22); }).join('')+(r[3]?'<small>'+r[3]+'</small>':'')+'</div></div>'; }).join('');
+  $$('#tleg canvas').forEach(function(c){
+    var d=window.devicePixelRatio||1, s=34; c.width=s*d; c.height=s*d;
+    var g=c.getContext('2d'); g.setTransform(d,0,0,d,0,0); g.textAlign='center'; g.textBaseline='middle';
+    paintSeal(g,0,0,s,c.dataset.st,0,false,{},3,5);
+  });
+}
+
+/* ---- 操作 ---- */
+function tutTap(x,y){
+  if(!T||T.busy||T.cleared) return;
+  var L=TUT[T.i], st=L.steps[T.step], k=tk(x,y);
+  if(st.btn){ tutMsg('上の文を読んだら「'+st.btn+'」を押してね'); return; }
+  if(st.tool){
+    if(!T.seal[k]){ tutMsg('封鎖（白い岩）をタップしよう'); return; }
+    if(!T.sel){ tutMsg('先に下の🔨を選んでね','#ffd60a'); return; }
+    for(var q in T.seal) delete T.seal[q];
+    T.flag[tk(3,3)]=1; T.fx={t:performance.now(),x:x,y:y};
+    tutMsg('🔨 封鎖を壊した！','#58e08a'); T.busy=true;
+    setTimeout(function(){ T.busy=false; tutNext(); },900); return;
+  }
+  if(L.reach&&T.step===0){
+    if(x===5&&y===0){ tutMsg('⛔ 届かない！ 開いたマスのとなりしか掘れない','#ff5d8f'); T.shake=performance.now();
+      T.busy=true; setTimeout(function(){ T.busy=false; tutNext(); },1100); }
+    else tutMsg('光っている遠くのマスをタップしてね');
+    return;
+  }
+  if(st.only&&(x!==st.only[0]||y!==st.only[1])){ tutMsg(st.onlyMsg); return; }
+  if(T.seal[k]){ tutMsg('封鎖されたマスは掘れない'); return; }
+  if(T.op[k]!==undefined) return;
+  if(T.flag[k]){ tutMsg('🚩のマスはタップしても開かない（長押しで外せる）'); return; }
+  if(L.reach&&!tutReach(T,x,y)){ tutMsg('⛔ 届かない！ 開いたマスのとなりしか掘れない','#ff5d8f'); T.shake=performance.now(); return; }
+  if(T.mine[k]){
+    if(L.known&&T.known[k]){                       // レッスン6：わざと踏む
+      T.known={}; T.boom={x:x,y:y,t:performance.now(),keep:true}; T.shake=performance.now();
+      for(var dx=-2;dx<=2;dx++) for(var dy=-2;dy<=2;dy++){ if(tutIn(T,x+dx,y+dy)) T.seal[tk(x+dx,y+dy)]=1; }
+      tutMsg('💥 封鎖された！','#ff9f45'); T.busy=true;
+      setTimeout(function(){ T.boom=null; T.busy=false; tutNext(); },1000); return;
+    }
+    T.boom={x:x,y:y,t:performance.now()}; T.shake=performance.now(); T.busy=true;
+    tutMsg('💥 爆弾だった！ もう一度（練習なので何も減らない）','#ff5d8f');
+    setTimeout(function(){ T.boom=null; T.busy=false; tutRestore(T); tutMsg('数字をよく見てもう一度。困ったら「ヒント」'); },1400);
+    return;
+  }
+  tutOpenCell(T,x,y); T.hint=null;
+  if(L.vault&&!T.vaultFound){ var v=L.vault;
+    if(Math.abs(x-v[0])<=v[2]&&Math.abs(y-v[1])<=v[2]){ T.vaultFound=true; tutMsg('💎 金庫を発見した！','#4cc9f0'); } }
+  else tutMsg('');
+  tutCheck();
+}
+function tutFlagAt(x,y){
+  if(!T||T.busy||T.cleared) return;
+  var k=tk(x,y), st=TUT[T.i].steps[T.step];
+  if(st.btn||st.tool||st.only||(TUT[T.i].reach&&T.step===0)) return;
+  if(T.op[k]!==undefined||T.seal[k]) return;
+  if(T.flag[k]){ delete T.flag[k]; tutMsg('旗を外した'); }
+  else { T.flag[k]=1; tutMsg('🚩 旗を立てた','#ff5d8f'); if(navigator.vibrate) try{ navigator.vibrate(15); }catch(e){} }
+  T.hint=null; tutCheck();
+}
+function tutHint(){
+  if(!T||T.cleared) return;
+  var hs=TUT[T.i].hint||[];
+  for(var i=0;i<hs.length;i++){ var h=hs[i], k=tk(h.go[0],h.go[1]);
+    var done=h.act==='flag'?T.flag[k]:T.op[k]!==undefined;
+    if(!done){ T.hint=h; tutMsg('💡 '+h.txt,'#ffd60a'); return; } }
+  tutMsg('もう少し！ 残りのマスも同じ考え方で解ける');
+}
+
+/* ---- 描画 ---- */
+function tutDraw(){
+  if(!T) return;
+  var cv=$('#tcv'), d=window.devicePixelRatio||1, g=cv.getContext('2d'), s=tutCS, now=performance.now();
+  g.setTransform(d,0,0,d,0,0);
+  var sh=T.shake&&now-T.shake<350?Math.sin((now-T.shake)/22)*5*(1-(now-T.shake)/350):0;
+  g.fillStyle='#13081f'; g.fillRect(0,0,T.W*s,T.H*s);
+  g.save(); g.translate(sh,0);
+  g.textAlign='center'; g.textBaseline='middle';
+  var L=TUT[T.i], st=L.steps[T.step];
+  for(var y=0;y<T.H;y++) for(var x=0;x<T.W;x++){
+    var k=tk(x,y), px=x*s, py=y*s, o=T.op[k];
+    if(T.seal[k]){
+      var nb={u:!!T.seal[tk(x,y-1)],r:!!T.seal[tk(x+1,y)],d:!!T.seal[tk(x,y+1)],l:!!T.seal[tk(x-1,y)]};
+      g.font='700 '+Math.round(s*0.46)+'px "Hiragino Kaku Gothic ProN",sans-serif';
+      paintSeal(g,px,py,s,'normal',o,false,nb,x,y); continue;
+    }
+    if(T.boom&&T.mine[k]){
+      g.fillStyle=(x===T.boom.x&&y===T.boom.y)?'#ff2d55':'#7a1d3a'; g.fillRect(px,py,s,s);
+      g.font=Math.round(s*0.5)+'px sans-serif'; g.fillText('💣',px+s/2,py+s/2); continue;
+    }
+    if(o!==undefined){
+      g.fillStyle=(x+y)%2?'#1a1030':'#1e1338'; g.fillRect(px,py,s,s);
+      if(o>0){ g.font='700 '+Math.round(s*0.46)+'px "Hiragino Kaku Gothic ProN",sans-serif'; g.fillStyle=NUMC[o]; g.fillText(o,px+s/2,py+s/2); }
+    }else{
+      var reach=!L.reach||tutReach(T,x,y);
+      g.fillStyle=(x+y)%2?'#4a2a80':'#512e8c'; g.fillRect(px,py,s,s);
+      g.fillStyle='rgba(224,170,255,.22)'; g.fillRect(px,py,s,3);
+      if(L.reach&&!reach){ g.fillStyle='rgba(10,4,20,.45)'; g.fillRect(px,py,s,s); }
+      if(T.flag[k]){ g.font=Math.round(s*0.46)+'px sans-serif'; g.fillStyle='#fff'; g.fillText('🚩',px+s/2,py+s/2); }
+      else if(T.known[k]){ g.fillStyle='rgba(255,93,143,.9)'; g.fillRect(px+s*0.32,py+s*0.32,s*0.36,s*0.36); }
+    }
+  }
+  g.strokeStyle='rgba(13,5,24,.55)'; g.lineWidth=1; g.beginPath();
+  for(var x=0;x<=T.W;x++){ g.moveTo(x*s+.5,0); g.lineTo(x*s+.5,T.H*s); }
+  for(var y=0;y<=T.H;y++){ g.moveTo(0,y*s+.5); g.lineTo(T.W*s,y*s+.5); }
+  g.stroke();
+  if(L.vault&&T.vaultFound){ var v=L.vault, vx=(v[0]-v[2])*s, vy=(v[1]-v[2])*s, vs=(v[2]*2+1)*s;
+    g.strokeStyle='rgba(76,201,240,.3)'; g.lineWidth=7; g.strokeRect(vx+2,vy+2,vs-4,vs-4);
+    g.strokeStyle=tutVaultDone(T)?'#2a7fa0':'#4cc9f0'; g.lineWidth=2.5; g.strokeRect(vx+2,vy+2,vs-4,vs-4); }
+  var pulse=0.5+0.5*Math.sin(now/220);
+  function ring(c,col,w){ g.strokeStyle=col; g.lineWidth=w; g.globalAlpha=0.55+0.45*pulse;
+    g.strokeRect(c[0]*s+2.5,c[1]*s+2.5,s-5,s-5); g.globalAlpha=1; }
+  if(!T.cleared&&!T.boom){
+    (st.hi||[]).forEach(function(c){ ring(c,'#ffd60a',3.5); });
+    (st.hi2||[]).forEach(function(c){ ring(c,'#ff5d8f',3.5); });
+    if(st.front) for(var y=0;y<T.H;y++) for(var x=0;x<T.W;x++){
+      var k=tk(x,y); if(T.op[k]===undefined&&!T.flag[k]&&tutReach(T,x,y)) ring([x,y],'#ffd60a',2.5); }
+    if(T.hint){ T.hint.c.forEach(function(c){ if(T.op[tk(c[0],c[1])]!==undefined) ring(c,'#ffd60a',3); });
+      ring(T.hint.go, T.hint.act==='flag'?'#ff5d8f':'#58e08a',4); }
+  }
+  if(T.fx){ var p=(now-T.fx.t)/700; if(p<1){ g.globalAlpha=1-p; g.strokeStyle='#fff'; g.lineWidth=4*(1-p)+1;
+      g.beginPath(); g.arc(T.fx.x*s+s/2,T.fx.y*s+s/2,s*(0.5+3*p),0,7); g.stroke(); g.globalAlpha=1; } else T.fx=null; }
+  g.restore();
+}
+function tutLoop(){ if(!tutOpen) return; tutDraw(); requestAnimationFrame(tutLoop); }
+
+/* ---- 入力（タップ＝掘る／長押し＝旗） ---- */
+(function(){
+  var cv=$('#tcv'), down=null, lpT=0;
+  function cell(e){ var r=cv.getBoundingClientRect();
+    return [Math.floor((e.clientX-r.left)/tutCS),Math.floor((e.clientY-r.top)/tutCS)]; }
+  cv.addEventListener('pointerdown',function(e){
+    if(!T) return; e.preventDefault();
+    down={x:e.clientX,y:e.clientY,c:cell(e),lp:false};
+    clearTimeout(lpT);
+    lpT=setTimeout(function(){ if(down){ down.lp=true; var c=down.c; if(tutIn(T,c[0],c[1])) tutFlagAt(c[0],c[1]); } },S.longMs);
+  });
+  cv.addEventListener('pointermove',function(e){
+    if(down&&Math.hypot(e.clientX-down.x,e.clientY-down.y)>TAP_PX){ clearTimeout(lpT); down=null; } });
+  function up(){ clearTimeout(lpT); if(!down) return; var d=down; down=null;
+    if(!d.lp&&tutIn(T,d.c[0],d.c[1])) tutTap(d.c[0],d.c[1]); }
+  cv.addEventListener('pointerup',up);
+  cv.addEventListener('pointercancel',function(){ clearTimeout(lpT); down=null; });
+  cv.addEventListener('contextmenu',function(e){ e.preventDefault(); });
+})();
+function openTut(i){
+  if(!S.tut) S.tut={};
+  if(i==null){ i=0; for(var j=0;j<TUT.length;j++) if(!S.tut[j]){ i=j; break; } }
+  $('#p-tut').classList.add('show'); tutOpen=true;
+  tutBuild(i); requestAnimationFrame(tutLoop);
+}
+function closeTut(){ $('#p-tut').classList.remove('show'); tutOpen=false; T=null; drawTutCard(); }
+function drawTutCard(){
+  var n=TUT.filter(function(_,j){ return S.tut&&S.tut[j]; }).length;
+  $('#tutsum').innerHTML='マインスイーパーのルールを、実際にさわって覚える7つのレッスン。<br>'
+    +(n?'<b style="color:var(--pri3)">'+n+' / '+TUT.length+' クリア</b>　':'')
+    +(S.tutRew?'✓ ごほうび受け取り済み':'全部クリアで <b style="color:var(--gold)">💎'+TUT_REWARD+'</b>（1回だけ）');
+  $('#tutgo').textContent=n===TUT.length?'あそびかたを見直す':(n?'つづきから':'あそびかたを始める');
+}
+$('#tutgo').onclick=function(){ openTut(); };
+$('#tutx').onclick=closeTut;
+$('#thint').onclick=tutHint;
+$('#treset').onclick=function(){ if(T) tutBuild(T.i); };
+$('#tnext').onclick=function(){ if(T&&!T.busy) tutNext(); };
+$('#tgo').onclick=function(){ if(!T) return; if(T.i<TUT.length-1) tutBuild(T.i+1); else closeTut(); };
+$('#tagain').onclick=function(){ if(T) tutBuild(T.i); };
+
 /* ======================= 起動 ======================= */
 window.addEventListener('resize',resize);
 rollDay(); checkTracks(); resize(); hud(); setMode('dig'); save();
+/* 初めての人にだけ、あそびかたを1回案内する */
+if(!S.tutSeen){
+  if((S.totalOpened||0)>=5){ S.tutSeen=1; save(); }
+  else setTimeout(function(){
+    if($('#dlg').classList.contains('show')) return;          // ほかの案内が出ていたら次回に回す
+    S.tutSeen=1; save();
+    dlg('⛏️','無限坑道へようこそ','マインスイーパーが初めてでも大丈夫。<br>さわって覚える<b>あそびかた</b>（7レッスン・約5分）がある。<br>全部クリアで<b>💎'+TUT_REWARD+'</b>。<br><small style="color:var(--sub)">あとからでも 設定 → あそびかた で見られる</small>',
+      [{t:'あとで',sub:true},{t:'見てみる',f:function(){ openTut(0); }}]);
+  },900);
+}
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-17a';
+var APP_VER='2026-11-18a';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 
