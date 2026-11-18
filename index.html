@@ -408,9 +408,14 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
     </div>
     <div class="sec">データ</div>
     <div class="card">
+      <h3>🔄 データを初期化</h3>
+      <p>はじめて遊ぶ状態に戻す。💎・オーブ・ガチャ券・盤面・記録・実績・あそびかたの進み具合が<b>すべて消える</b>。<br>
+      初期化後は 💎0 からスタートし、あそびかたを全部クリアすると <b>💎100＋🎫ガチャ券5枚</b> がもらえる。</p>
+      <button class="btn danger wide" id="reset">データを初期化する</button>
+    </div>
+    <div class="card">
       <p id="vertxt"></p>
       <button class="btn sub wide" id="export">JSONで書き出し</button>
-      <button class="btn danger wide" id="reset">全データを消す</button>
     </div>
   </div>
 </div>
@@ -583,11 +588,11 @@ var TRACKS=[
 var S, CS=46, camX=-160, camY=-200, mode='dig';
 
 function fresh(){
-  var orbs={}; ORBS.forEach(function(o){ orbs[o.id]=30; });   // テスト用：全オーブ30個
+  var orbs={}; ORBS.forEach(function(o){ orbs[o.id]=0; });    // 新規プレイヤーは何も持っていない
   return {
-    v:3, seed:(Math.random()*1e9)|0, dia:3000,
+    v:3, seed:(Math.random()*1e9)|0, dia:0,
     opened:{}, flags:{}, known:{}, seal:{}, blasts:{}, nextBlast:1,
-    marks:{}, orbs:orbs, t1:3, t10:1,
+    marks:{}, orbs:orbs, t1:0, t10:0,
     vaults:{},
     dayKey:null, vaultCleared:0,
     lastLogin:null, streak:0,
@@ -3331,8 +3336,17 @@ $('#export').onclick=function(){
   a.download='habitminer.json'; a.click();
 };
 $('#reset').onclick=function(){
-  confirmDlg('⚠️','全データを消す','元に戻せない。','消す',function(){
-    localStorage.removeItem('habitminer_v3'); location.reload(); });
+  confirmDlg('⚠️','データを初期化する？','💎・オーブ・ガチャ券・盤面・記録・実績が<b>すべて消える</b>。<br>元には戻せない。','初期化する',function(){
+    setTimeout(function(){
+      confirmDlg('⚠️','本当に初期化する？','最後の確認。押すとすぐに消える。','すべて消す',function(){
+        /* removeItem だけだと、再読み込み直前の自動保存で元のデータが書き戻される。
+           先に中身を新規状態に置き換えてから保存・再読み込みする。 */
+        S=fresh();
+        try{ localStorage.setItem('habitminer_v3',JSON.stringify(S)); }catch(e){}
+        location.reload();
+      });
+    },150);
+  });
 };
 
 /* ======================= タブ ======================= */
@@ -3363,7 +3377,8 @@ $$('[data-close]').forEach(function(b){
    本番の盤面・セーブとは完全に別の、手作りの小さな盤面で練習する。
    盤面の文字： '.'=未開放の安全マス  '*'=爆弾  'o'=はじめから開いているマス
    どの盤面も「推理だけで必ず解ける」ことを確認済み。 */
-var TUT_REWARD=100;
+var TUT_REWARD=100, TUT_TIX=5;
+var TUT_PRIZE='💎'+TUT_REWARD+'＋🎫ガチャ券'+TUT_TIX+'枚';
 function tk(x,y){ return x+','+y; }
 var TUT=[
  { t:'数字のルール',
@@ -3539,8 +3554,8 @@ function tutClear(){
   $('#tgo').textContent=T.i<TUT.length-1?'次のレッスンへ ▶':'あそびかたを終える';
   var all=TUT.every(function(_,j){ return S.tut[j]; });
   if(all&&!S.tutRew){
-    S.tutRew=1; S.dia+=TUT_REWARD; hud();
-    setTimeout(function(){ dlg('🎓','あそびかた 全クリア！','7つのレッスンをすべて終えた。<br>ごほうびに <b>💎'+TUT_REWARD+'</b>！<br>さっそく本番の坑道を掘ってみよう。',[{t:'OK'}]); },400);
+    S.tutRew=2; S.dia+=TUT_REWARD; S.t1+=TUT_TIX; hud(); first=true;
+    setTimeout(function(){ dlg('🎓','あそびかた 全クリア！','7つのレッスンをすべて終えた。<br>ごほうびに <b>'+TUT_PRIZE+'</b>！<br>ガチャを回して、オーブをそろえてから坑道へ行こう。',[{t:'OK'}]); },400);
   }
   if(first) save();
   tutChips();
@@ -3711,7 +3726,7 @@ function drawTutCard(){
   var n=TUT.filter(function(_,j){ return S.tut&&S.tut[j]; }).length;
   $('#tutsum').innerHTML='マインスイーパーのルールを、実際にさわって覚える7つのレッスン。<br>'
     +(n?'<b style="color:var(--pri3)">'+n+' / '+TUT.length+' クリア</b>　':'')
-    +(S.tutRew?'✓ ごほうび受け取り済み':'全部クリアで <b style="color:var(--gold)">💎'+TUT_REWARD+'</b>（1回だけ）');
+    +(S.tutRew?'✓ ごほうび受け取り済み':'全部クリアで <b style="color:var(--gold)">'+TUT_PRIZE+'</b>（1回だけ）');
   $('#tutgo').textContent=n===TUT.length?'あそびかたを見直す':(n?'つづきから':'あそびかたを始める');
 }
 $('#tutgo').onclick=function(){ openTut(); };
@@ -3725,19 +3740,22 @@ $('#tagain').onclick=function(){ if(T) tutBuild(T.i); };
 /* ======================= 起動 ======================= */
 window.addEventListener('resize',resize);
 rollDay(); checkTracks(); resize(); hud(); setMode('dig'); save();
+/* 旧版で💎100だけ受け取った人には、増えた分（ガチャ券）を後から渡す */
+if(S.tutRew===1){ S.tutRew=2; S.t1+=TUT_TIX; hud(); save();
+  setTimeout(function(){ toast('🎓 あそびかたのごほうび追加：🎫ガチャ券'+TUT_TIX+'枚'); },1200); }
 /* 初めての人にだけ、あそびかたを1回案内する */
 if(!S.tutSeen){
   if((S.totalOpened||0)>=5){ S.tutSeen=1; save(); }
   else setTimeout(function(){
     if($('#dlg').classList.contains('show')) return;          // ほかの案内が出ていたら次回に回す
     S.tutSeen=1; save();
-    dlg('⛏️','無限坑道へようこそ','マインスイーパーが初めてでも大丈夫。<br>さわって覚える<b>あそびかた</b>（7レッスン・約5分）がある。<br>全部クリアで<b>💎'+TUT_REWARD+'</b>。<br><small style="color:var(--sub)">あとからでも 設定 → あそびかた で見られる</small>',
+    dlg('⛏️','無限坑道へようこそ','マインスイーパーが初めてでも大丈夫。<br>さわって覚える<b>あそびかた</b>（7レッスン・約5分）がある。<br>全部クリアで<b>'+TUT_PRIZE+'</b>。<br><small style="color:var(--sub)">あとからでも 設定 → あそびかた で見られる</small>',
       [{t:'あとで',sub:true},{t:'見てみる',f:function(){ openTut(0); }}]);
   },900);
 }
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-18a';
+var APP_VER='2026-11-18b';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 
