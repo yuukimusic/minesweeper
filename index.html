@@ -418,7 +418,7 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
 </div>
 
 <div class="panel" id="p-tut">
-  <div class="ptitle">📖 あそびかた<button class="x" id="tutx">✕</button></div>
+  <div class="ptitle"><span id="tphead">📖 あそびかた</span><button class="x" id="tutx">✕</button></div>
   <div class="pbody">
     <div id="tchips"></div>
     <div class="tsay"><h3 id="ttitle"></h3><div id="tsay"></div></div>
@@ -937,6 +937,7 @@ function blast(x,y,forced){
         delete S.flags[key(cells[i][0]+dx,cells[i][1]+dy)];
   }
   S.blasts[id]={t:t,x:x,y:y,n:n};
+  stuckSoon();
   S.safeStreak=0; S.safeHit={};
   return {id:id,t:t,n:n};
 }
@@ -1036,6 +1037,7 @@ function finishGot(got){
   if(S.safeStreak>S.maxSafe) S.maxSafe=S.safeStreak;
   checkVault(got.dug); checkTracks(); render(); hud();
   if(got.tix||got.dia) save(); else saveSoon();
+  stuckSoon();
 }
 
 function dig(x,y){
@@ -3550,7 +3552,7 @@ function tutNum(T,x,y){
 function tutIn(T,x,y){ return x>=0&&y>=0&&x<T.W&&y<T.H; }
 function tutSafeLeft(T){ var n=0;
   for(var y=0;y<T.H;y++) for(var x=0;x<T.W;x++){ var k=tk(x,y); if(!T.mine[k]&&T.op[k]===undefined) n++; } return n; }
-function tutVaultDone(T){ var v=TUT[T.i].vault;
+function tutVaultDone(T){ var v=T.L.vault;
   for(var x=v[0]-v[2];x<=v[0]+v[2];x++) for(var y=v[1]-v[2];y<=v[1]+v[2];y++){
     var k=tk(x,y); if(!T.mine[k]&&(T.op[k]===undefined||T.seal[k])) return false; } return true; }
 function tutReach(T,x,y){
@@ -3570,8 +3572,8 @@ function tutSnap(T){ T.snap=JSON.stringify({op:T.op,flag:T.flag,seal:T.seal,vf:T
 function tutRestore(T){ var s=JSON.parse(T.snap); T.op=s.op; T.flag=s.flag; T.seal=s.seal; T.vaultFound=s.vf; T.opened=s.o; }
 
 function tutBuild(i){
-  var L=TUT[i], rows=L.rows;
-  T={i:i, step:0, W:rows[0].length, H:rows.length, mine:{}, op:{}, flag:{}, seal:{}, known:{},
+  var L=(i==='res'?RES:TUT[i]), rows=L.rows;
+  T={i:i, L:L, step:0, W:rows[0].length, H:rows.length, mine:{}, op:{}, flag:{}, seal:{}, known:{},
      opened:0, vaultFound:false, tool:null, sel:false, busy:false, cleared:false, hint:null, boom:null};
   rows.forEach(function(r,y){ r.split('').forEach(function(c,x){ if(c==='*') T.mine[tk(x,y)]=1; }); });
   rows.forEach(function(r,y){ r.split('').forEach(function(c,x){ if(c==='o') T.op[tk(x,y)]=tutNum(T,x,y); }); });
@@ -3583,13 +3585,14 @@ function tutBuild(i){
   tutStep();
 }
 function tutStep(){
-  var L=TUT[T.i], st=L.steps[T.step];
+  var L=T.L, st=L.steps[T.step];
   T.base=T.opened; T.hint=null; T.tool=null; T.sel=false; tutSnap(T);
-  $('#ttitle').textContent=(T.i+1)+'. '+L.t;
+  $('#ttitle').textContent=(T.i==='res'?'':(T.i+1)+'. ')+L.t;
+  $('#tphead').textContent=T.i==='res'?'🧱 練習ステージ':'📖 あそびかた';
   $('#tsay').innerHTML=st.say;
   $('#tmsg').textContent=''; $('#tmsg').style.color='';
   $('#tnext').style.display=st.btn?'':'none'; $('#tnext').textContent=st.btn||'';
-  $('#thint').style.display=L.hint&&!st.btn&&!st.hi?'':'none';
+  $('#thint').style.display=(L.hint||L.hintFn)&&!st.btn&&!st.hi?'':'none';
   $('#tclear').style.display='none'; $('#tctl').style.display='';
   var tb=$('#ttool');
   if(st.tool){ T.tool=st.tool; var o=OB[st.tool];
@@ -3602,16 +3605,17 @@ function tutStep(){
   tutChips();
 }
 function tutNext(){
-  var L=TUT[T.i];
+  var L=T.L;
   if(T.step+1<L.steps.length){ T.step++; tutStep(); return; }
   tutClear();
 }
 function tutCheck(){
-  var st=TUT[T.i].steps[T.step];
+  var st=T.L.steps[T.step];
   if(st.ok&&st.ok(T)){ T.busy=true; setTimeout(function(){ T.busy=false; tutNext(); },550); }
 }
 function tutClear(){
-  var L=TUT[T.i]; T.cleared=true; T.hint=null;
+  var L=T.L; T.cleared=true; T.hint=null;
+  if(T.i==='res'){ resClear(); return; }
   if(!S.tut) S.tut={};
   var first=!S.tut[T.i]; S.tut[T.i]=1;
   $('#tsay').innerHTML='<b style="color:#58e08a">✓ クリア！</b><br>'+L.done;
@@ -3627,6 +3631,8 @@ function tutClear(){
   tutChips();
 }
 function tutChips(){
+  $('#tchips').style.display=T.i==='res'?'none':'';
+  if(T.i==='res') return;
   $('#tchips').innerHTML=TUT.map(function(L,j){
     return '<button data-tj="'+j+'" class="'+(j===T.i?'on ':'')+(S.tut&&S.tut[j]?'ok':'')+'">'+(S.tut&&S.tut[j]?'✓':(j+1))+'</button>'; }).join('');
   $$('#tchips [data-tj]').forEach(function(b){ b.onclick=function(){ tutBuild(+b.dataset.tj); }; });
@@ -3648,7 +3654,7 @@ function tutLegend(){
 /* ---- 操作 ---- */
 function tutTap(x,y){
   if(!T||T.busy||T.cleared) return;
-  var L=TUT[T.i], st=L.steps[T.step], k=tk(x,y);
+  var L=T.L, st=L.steps[T.step], k=tk(x,y);
   if(st.btn){ tutMsg('上の文を読んだら「'+st.btn+'」を押してね'); return; }
   if(st.tool){
     if(!T.seal[k]){ tutMsg('封鎖（白い岩）をタップしよう'); return; }
@@ -3677,8 +3683,8 @@ function tutTap(x,y){
       setTimeout(function(){ T.boom=null; T.busy=false; tutNext(); },1000); return;
     }
     T.boom={x:x,y:y,t:performance.now()}; T.shake=performance.now(); T.busy=true;
-    tutMsg('💥 爆弾だった！ もう一度（練習なので何も減らない）','#ff5d8f');
-    setTimeout(function(){ T.boom=null; T.busy=false; tutRestore(T); tutMsg('数字をよく見てもう一度。困ったら「ヒント」'); },1400);
+    tutMsg(L.undo1?'💥 爆弾だった！ 1手前に戻る（封鎖はなし）':'💥 爆弾だった！ もう一度（練習なので何も減らない）','#ff5d8f');
+    setTimeout(function(){ T.boom=null; T.busy=false; if(!L.undo1) tutRestore(T); tutMsg(L.undo1?'1手前に戻った。困ったら「ヒント」':'数字をよく見てもう一度。困ったら「ヒント」'); },1400);
     return;
   }
   tutOpenCell(T,x,y); T.hint=null;
@@ -3689,8 +3695,8 @@ function tutTap(x,y){
 }
 function tutFlagAt(x,y){
   if(!T||T.busy||T.cleared) return;
-  var k=tk(x,y), st=TUT[T.i].steps[T.step];
-  if(st.btn||st.tool||st.only||(TUT[T.i].reach&&T.step===0)) return;
+  var k=tk(x,y), st=T.L.steps[T.step];
+  if(st.btn||st.tool||st.only||(T.L.reach&&T.step===0)) return;
   if(T.op[k]!==undefined||T.seal[k]) return;
   if(T.flag[k]){ delete T.flag[k]; tutRing(x,y,true); tutMsg('旗を外した'); }
   else { T.flag[k]=1; tutRing(x,y); tutMsg('🚩 旗を立てた','#ff5d8f'); if(navigator.vibrate) try{ navigator.vibrate(15); }catch(e){} }
@@ -3706,7 +3712,9 @@ function tutRing(x,y,off){                     // 本番と同じ「旗を立て
 }
 function tutHint(){
   if(!T||T.cleared) return;
-  var hs=TUT[T.i].hint||[];
+  if(T.L.hintFn){ var hh=T.L.hintFn(T);
+    if(hh){ T.hint=hh; tutMsg('💡 '+hh.txt,'#ffd60a'); } else tutMsg('もう少し！'); return; }
+  var hs=T.L.hint||[];
   for(var i=0;i<hs.length;i++){ var h=hs[i], k=tk(h.go[0],h.go[1]);
     var done=h.act==='flag'?T.flag[k]:T.op[k]!==undefined;
     if(!done){ T.hint=h; tutMsg('💡 '+h.txt,'#ffd60a'); return; } }
@@ -3722,7 +3730,7 @@ function tutDraw(){
   g.fillStyle='#13081f'; g.fillRect(0,0,T.W*s,T.H*s);
   g.save(); g.translate(sh,0);
   g.textAlign='center'; g.textBaseline='middle';
-  var L=TUT[T.i], st=L.steps[T.step];
+  var L=T.L, st=L.steps[T.step];
   for(var y=0;y<T.H;y++) for(var x=0;x<T.W;x++){
     var k=tk(x,y), px=x*s, py=y*s, o=T.op[k];
     if(T.seal[k]){
@@ -3803,17 +3811,143 @@ function drawTutCard(){
     +(S.tutRew?'✓ ごほうび受け取り済み':'全部クリアで <b style="color:var(--gold)">'+TUT_PRIZE+'</b>（1回だけ）');
   $('#tutgo').textContent=n===TUT.length?'あそびかたを見直す':(n?'つづきから':'あそびかたを始める');
 }
+/* ======================= 詰み救済（練習ステージ） =======================
+   掘れるマスが1つもなくなったら案内する。7×7のミニ盤面をクリアすると、
+   新しい盤面で再スタート（💎・オーブ・記録・実績はそのまま）。 */
+var RES=null, stuckAck=false, stuckT=0;
+/* 推理だけで次に開けられる安全マスを1つ探す（ヒントと盤面生成に使う） */
+function tutDeduce(T){
+  var K={};
+  for(var it=0;it<60;it++){
+    var cons=[];
+    for(var k in T.op){ var c=k.split(','), x=+c[0], y=+c[1], n=T.op[k], h=[];
+      for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++){
+        if(!(dx||dy)||!tutIn(T,x+dx,y+dy)) continue; var q=tk(x+dx,y+dy);
+        if(T.op[q]!==undefined) continue; if(K[q]) n--; else h.push(q); }
+      if(h.length) cons.push({c:[x,y],h:h,n:n}); }
+    var ch=false;
+    for(var i=0;i<cons.length;i++){ var a=cons[i];
+      if(a.n===0){ var g=a.h[0].split(','); return {go:[+g[0],+g[1]],c:[a.c],
+        txt:'この「'+T.op[tk(a.c[0],a.c[1])]+'」のまわりの爆弾は、もう全部わかっている → 緑のマスは安全。'}; }
+      if(a.n===a.h.length){ a.h.forEach(function(q){ K[q]=1; }); ch=true; } }
+    if(ch) continue;
+    for(var i=0;i<cons.length&&!ch;i++) for(var j=0;j<cons.length&&!ch;j++){
+      var a=cons[i], b=cons[j]; if(a===b||a.h.length>=b.h.length) continue;
+      if(!a.h.every(function(q){ return b.h.indexOf(q)>=0; })) continue;
+      var d=b.h.filter(function(q){ return a.h.indexOf(q)<0; });
+      if(b.n-a.n===0){ var g=d[0].split(','); return {go:[+g[0],+g[1]],c:[a.c,b.c],
+        txt:'黄色の2つの数字を比べよう。見ているマスが増えても爆弾の数は同じ → 緑のマスは安全。'}; }
+      if(b.n-a.n===d.length){ d.forEach(function(q){ K[q]=1; }); ch=true; } }
+    if(!ch) return null;
+  }
+  return null;
+}
+/* 運に頼らず推理だけで解ける 7×7 を作る */
+function genRescue(){
+  var W=7, H=7, best=null;
+  for(var tries=0;tries<600;tries++){
+    var mine={}, n=0;
+    while(n<9){ var x=(Math.random()*W)|0, y=(Math.random()*H)|0;
+      if(Math.abs(x-3)<=1&&Math.abs(y-3)<=1) continue; if(!mine[tk(x,y)]){ mine[tk(x,y)]=1; n++; } }
+    var t={W:W,H:H,mine:mine,op:{},flag:{},opened:0};
+    tutOpenCell(t,3,3);
+    var start=JSON.stringify(t.op), left=tutSafeLeft(t);
+    if(left<12) continue;
+    var g;
+    while(tutSafeLeft(t)>0&&(g=tutDeduce(t))) tutOpenCell(t,g.go[0],g.go[1]);
+    if(tutSafeLeft(t)>0) continue;
+    var op=JSON.parse(start), rows=[];
+    for(var y=0;y<H;y++){ var r=''; for(var x=0;x<W;x++){ var k=tk(x,y); r+=mine[k]?'*':(op[k]!==undefined?'o':'.'); } rows.push(r); }
+    best=rows; break;
+  }
+  if(!best) best=TUT[3].rows;                       // 念のための保険（レッスン4の盤面）
+  return { t:'ミニ盤面をクリアしよう', rows:best, undo1:true, hintFn:tutDeduce,
+    steps:[{ say:'封鎖のない<b>7×7のミニ盤面</b>。<b>爆弾以外のマスを全部開けたらクリア</b>。<br>'
+      +'踏んでも封鎖されず、<b>1手前に戻る</b>だけ。旗は長押し。<br>'
+      +'運に頼らず、<b>推理だけで必ず解ける</b>配置になっている。',
+      ok:function(T){ return tutSafeLeft(T)===0; } }],
+    done:'' };
+}
+function openRescue(){
+  RES=genRescue();
+  $('#p-tut').classList.add('show'); tutOpen=true;
+  tutBuild('res'); requestAnimationFrame(tutLoop);
+}
+function resClear(){
+  var gift=!S.tutRew;
+  $('#tsay').innerHTML='<b style="color:#58e08a">✓ クリア！</b><br>新しい盤面で再スタートしよう。<br>'
+    +'<small style="color:var(--sub)">💎・オーブ・記録・実績はそのまま。掘った跡・封鎖・金庫・しおりは消えて、地雷の配置が変わる。</small>'
+    +(gift?'<br>はじめてのクリア記念に <b style="color:var(--gold)">'+TUT_PRIZE+'</b>！':'');
+  $('#tmsg').textContent=''; $('#ttool').style.display='none';
+  $('#tctl').style.display='none'; $('#tclear').style.display='';
+  $('#tagain').style.display='none'; $('#tgo').textContent='新しい盤面で始める ▶';
+}
+function resetBoard(){
+  S.seed=(Math.random()*1e9)|0;
+  S.opened={}; S.flags={}; S.known={}; S.seal={}; S.blasts={}; S.nextBlast=1;
+  S.vaults={}; S.marks={}; S.poison=[];
+  S.safeStreak=0; S.safeHit={};
+  S.shieldLeft=0; S.dynaLeft=0; S.stoneArmed=false; S.leafLeft=0; S.ghostUntil=0;
+  iceSet=null; icePhase=null; setMode('dig');
+  centerOn(0,0,46);
+}
+function resFinish(){
+  var gift=!S.tutRew;
+  if(gift){ S.tutRew=2; S.dia+=TUT_REWARD; S.t1+=TUT_TIX; }
+  resetBoard(); stuckAck=false;
+  $('#tagain').style.display='';
+  closeTut(); hud(); render(); save();
+  toast('🧱 新しい盤面で再スタート！'+(gift?'<br><small style="color:#a894c7">'+TUT_PRIZE+' を受け取った</small>':''));
+}
+/* 掘れるマス（未開放・封鎖なし・地雷でない・届く）が1つでも残っているか */
+function isStuck(){
+  var seen={};
+  function ok(x,y){ var k=key(x,y); if(seen[k]) return false; seen[k]=1;
+    return S.opened[k]===undefined&&!S.seal[k]&&!isMine(x,y)&&reachable(x,y); }
+  for(var x=-SAFE_R;x<=SAFE_R;x++) for(var y=-SAFE_R;y<=SAFE_R;y++) if(ok(x,y)) return false;
+  var ks=Object.keys(S.opened);
+  for(var i=ks.length-1;i>=0;i--){                  // 新しく掘ったマスから見る（すぐ見つかる）
+    var k=ks[i]; if(S.seal[k]) continue; var c=k.split(','), cx=+c[0], cy=+c[1];
+    for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if((dx||dy)&&ok(cx+dx,cy+dy)) return false; }
+  for(var k in S.seal){ var b=S.blasts[S.seal[k]]; if(!b||!b.see) continue; var c=k.split(',');
+    for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if((dx||dy)&&ok(+c[0]+dx,+c[1]+dy)) return false; }
+  return true;
+}
+/* 自力で切り開ける手段（封鎖に効くオーブ・💎・スカイ・ガチャ）があるか */
+function canDigOut(){
+  if((S.orbs.sky||0)>0||S.t1>0||S.t10>0||S.dia>=GACHA1) return true;
+  for(var id in S.blasts){ var b=S.blasts[id], t=b.t==='pin'?'normal':b.t, M=MINES[t]; if(!M) continue;
+    if(S.dia>=Math.round(b.n*5)) return true;
+    var by=(M.by||[]).concat(t==='black'?['ghost']:[]);
+    for(var i=0;i<by.length;i++) if((S.orbs[by[i]]||0)>0) return true; }
+  return false;
+}
+function stuckCheck(){
+  if(tutOpen||$('#dlg').classList.contains('show')) return;
+  if(!isStuck()){ stuckAck=false; return; }
+  if(stuckAck) return;
+  var gift=!S.tutRew?'<br>はじめてクリアすると <b>'+TUT_PRIZE+'</b> のプレゼントも！':'';
+  var body='掘れるマスがもう残っていない…<br>7×7の<b>練習ステージ</b>をクリアすると、新しい盤面で再スタートできる。'
+    +'<br><small style="color:var(--sub)">💎・オーブ・記録・実績はそのまま</small>'+gift;
+  if(canDigOut())
+    dlg('🧱','道がふさがった！',body+'<br><br>オーブや💎で封鎖を壊して、自分で切り開いてもいい。',
+      [{t:'自分で切り開く',sub:true,f:function(){ stuckAck=true; }},{t:'練習ステージへ',f:openRescue}]);
+  else
+    dlg('🧱','道がふさがった！',body,[{t:'練習ステージへ',f:openRescue}]);
+}
+function stuckSoon(){ clearTimeout(stuckT); stuckT=setTimeout(stuckCheck,1300); }
 $('#tutgo').onclick=function(){ openTut(); };
 $('#tutx').onclick=closeTut;
 $('#thint').onclick=tutHint;
 $('#treset').onclick=function(){ if(T) tutBuild(T.i); };
 $('#tnext').onclick=function(){ if(T&&!T.busy) tutNext(); };
-$('#tgo').onclick=function(){ if(!T) return; if(T.i<TUT.length-1) tutBuild(T.i+1); else closeTut(); };
+$('#tgo').onclick=function(){ if(!T) return; if(T.i==='res'){ resFinish(); return; } if(T.i<TUT.length-1) tutBuild(T.i+1); else closeTut(); };
 $('#tagain').onclick=function(){ if(T) tutBuild(T.i); };
 
 /* ======================= 起動 ======================= */
 window.addEventListener('resize',resize);
 rollDay(); checkTracks(); resize(); hud(); setMode('dig'); save();
+setTimeout(stuckCheck,2600);                      // 起動時にも確認（ほかの案内が出ていれば次の操作のあとで）
 /* 旧版で💎100だけ受け取った人には、増えた分（ガチャ券）を後から渡す */
 if(S.tutRew===1){ S.tutRew=2; S.t1+=TUT_TIX; hud(); save();
   setTimeout(function(){ toast('🎓 あそびかたのごほうび追加：🎫ガチャ券'+TUT_TIX+'枚'); },1200); }
@@ -3829,7 +3963,7 @@ if(!S.tutSeen){
 }
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-18d';
+var APP_VER='2026-11-19a';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 

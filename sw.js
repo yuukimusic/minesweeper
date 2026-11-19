@@ -1,6 +1,6 @@
 /* Purple Mine ∞ — オフライン用 Service Worker
    更新したら VERSION の日付を変えること。古いキャッシュは自動で消える。 */
-var VERSION = '2026-11-18d';
+var VERSION = '2026-11-19a';
 var CACHE   = 'mugen-kodo-' + VERSION;
 var ASSETS  = ['./', './index.html', './apple-touch-icon.png', './icon-192.png', './icon-512.png'];
 
