@@ -42,6 +42,8 @@ body{display:flex;flex-direction:column}
   border-radius:12px;width:42px;height:42px;color:var(--txt);font-family:inherit;
   font-size:17px;font-weight:700;backdrop-filter:blur(6px)}
 #side button:disabled{opacity:.3}
+#side #b-stuck{border-color:var(--gold);animation:stk 1.6s ease-in-out infinite}
+@keyframes stk{0%,100%{box-shadow:0 0 0 rgba(255,214,10,0)}50%{box-shadow:0 0 16px rgba(255,214,10,.75)}}
 #side button.on{background:var(--pri);border-color:var(--pri3);box-shadow:0 0 14px rgba(157,78,221,.7)}
 #side .bdg{position:absolute;top:-5px;right:-5px;background:var(--pink);border-radius:9px;
   font-size:10px;padding:0 5px;line-height:15px;color:#fff}
@@ -336,6 +338,7 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
     <button id="z-out">－</button>
     <button id="b-mark">📍</button>
     <button id="b-bag">🎒</button>
+    <button id="b-stuck" style="display:none">🧱</button>
   </div>
   <div class="pop" id="pop-mark"></div>
   <div class="pop" id="pop-bag"></div>
@@ -3902,9 +3905,11 @@ function resFinish(){
   toast('🧱 新しい盤面で再スタート！'+(gift?'<br><small style="color:#a894c7">'+TUT_PRIZE+' を受け取った</small>':''));
 }
 /* 掘れるマス（未開放・封鎖なし・地雷でない・届く）が1つでも残っているか */
+var stuckSeals={};
 function isStuck(){
-  var seen={};
-  function ok(x,y){ var k=key(x,y); if(seen[k]) return false; seen[k]=1;
+  var seen={}; stuckSeals={};
+  function ok(x,y){ var k=key(x,y); if(S.seal[k]) stuckSeals[S.seal[k]]=1;
+    if(seen[k]) return false; seen[k]=1;
     return S.opened[k]===undefined&&!S.seal[k]&&!isMine(x,y)&&reachable(x,y); }
   for(var x=-SAFE_R;x<=SAFE_R;x++) for(var y=-SAFE_R;y<=SAFE_R;y++) if(ok(x,y)) return false;
   var ks=Object.keys(S.opened);
@@ -3915,20 +3920,25 @@ function isStuck(){
     for(var dx=-1;dx<=1;dx++) for(var dy=-1;dy<=1;dy++) if((dx||dy)&&ok(+c[0]+dx,+c[1]+dy)) return false; }
   return true;
 }
-/* 自力で切り開ける手段（封鎖に効くオーブ・💎・スカイ・ガチャ）があるか */
+/* 自力で切り開ける手段があるか。
+   見るのは「いま詰んでいる場所に接している封鎖」だけ（遠くの封鎖やガチャは数えない）。
+   isStuck() のあとに呼ぶこと */
 function canDigOut(){
-  if((S.orbs.sky||0)>0||S.t1>0||S.t10>0||S.dia>=GACHA1) return true;
-  for(var id in S.blasts){ var b=S.blasts[id], t=b.t==='pin'?'normal':b.t, M=MINES[t]; if(!M) continue;
+  if((S.orbs.sky||0)>0) return true;                 // ☁️スカイは届かない場所へ飛べる
+  for(var id in stuckSeals){ var b=S.blasts[id]; if(!b) continue;
+    var t=b.t==='pin'?'normal':b.t, M=MINES[t]; if(!M) continue;
     if(S.dia>=Math.round(b.n*5)) return true;
-    var by=(M.by||[]).concat(t==='black'?['ghost']:[]);
+    var by=(M.by||[]).concat(t==='black'?['ghost']:[], ['doctor']);
     for(var i=0;i<by.length;i++) if((S.orbs[by[i]]||0)>0) return true; }
   return false;
 }
-function stuckCheck(){
+function stuckCheck(force){
+  var st=isStuck();
+  $('#b-stuck').style.display=st?'':'none';         // 詰んでいるあいだは🧱ボタンからいつでも案内を開ける
+  if(!st){ stuckAck=false; return; }
   /* プレイ画面を見ているときだけ（ガチャ演出やほかの画面に割り込まない） */
   if(tutOpen||$('#dlg').classList.contains('show')||document.querySelector('.panel.show')) return;
-  if(!isStuck()){ stuckAck=false; return; }
-  if(stuckAck&&canDigOut()) return;                 // 自力で切り開くと選んだ：手段が残っているあいだは待つ
+  if(!force&&stuckAck&&canDigOut()) return;         // 自力で切り開くと選んだ：手段が残っているあいだは待つ
   stuckAck=false;
   var gift=!S.tutRew?'<br>はじめてクリアすると <b>'+TUT_PRIZE+'</b> のプレゼントも！':'';
   var body='掘れるマスがもう残っていない…<br>7×7の<b>練習ステージ</b>をクリアすると、新しい盤面で再スタートできる。'
@@ -3939,6 +3949,7 @@ function stuckCheck(){
   else
     dlg('🧱','道がふさがった！',body,[{t:'練習ステージへ',f:openRescue}]);
 }
+$('#b-stuck').onclick=function(){ stuckCheck(true); };
 function stuckSoon(){ clearTimeout(stuckT); stuckT=setTimeout(stuckCheck,1300); }
 $('#tutgo').onclick=function(){ openTut(); };
 $('#tutx').onclick=closeTut;
@@ -3967,7 +3978,7 @@ if(!S.tutSeen){
 }
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-19b';
+var APP_VER='2026-11-19c';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 
