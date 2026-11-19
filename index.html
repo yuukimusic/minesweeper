@@ -2883,6 +2883,7 @@ $('#b-mark').addEventListener('pointerleave',function(){ clearTimeout(mkT); mkT=
 
 /* ======================= HUD ======================= */
 function hud(){
+  if(typeof stuckSoon==='function') stuckSoon();     // 💎・オーブ・封鎖が動いたら詰みを確認し直す
   $('#dia .v').textContent=fmt(S.dia);
   $('#tix').textContent='🎫 '+S.t1+' / 🏅 '+S.t10;
   $('#s-streak').textContent=S.streak;
@@ -3424,7 +3425,7 @@ $$('#tabs button').forEach(function(b){
     var t=b.dataset.tab;
     $$('#tabs button').forEach(function(x){ x.classList.toggle('on',x===b); });
     $$('.panel').forEach(function(p){ p.classList.remove('show'); });
-    if(t==='play') return;
+    if(t==='play'){ stuckSoon(); return; }        // プレイに戻ったら詰みを確認
     if(t==='col') drawOrbs();
     if(t==='rm') drawRoadmap();
     if(t==='set') drawSettings();
@@ -3437,6 +3438,7 @@ $$('[data-close]').forEach(function(b){
   b.onclick=function(){
     $$('.panel').forEach(function(p){ p.classList.remove('show'); });
     $$('#tabs button').forEach(function(x){ x.classList.toggle('on',x.dataset.tab==='play'); });
+    stuckSoon();
   };
 });
 
@@ -3923,9 +3925,11 @@ function canDigOut(){
   return false;
 }
 function stuckCheck(){
-  if(tutOpen||$('#dlg').classList.contains('show')) return;
+  /* プレイ画面を見ているときだけ（ガチャ演出やほかの画面に割り込まない） */
+  if(tutOpen||$('#dlg').classList.contains('show')||document.querySelector('.panel.show')) return;
   if(!isStuck()){ stuckAck=false; return; }
-  if(stuckAck) return;
+  if(stuckAck&&canDigOut()) return;                 // 自力で切り開くと選んだ：手段が残っているあいだは待つ
+  stuckAck=false;
   var gift=!S.tutRew?'<br>はじめてクリアすると <b>'+TUT_PRIZE+'</b> のプレゼントも！':'';
   var body='掘れるマスがもう残っていない…<br>7×7の<b>練習ステージ</b>をクリアすると、新しい盤面で再スタートできる。'
     +'<br><small style="color:var(--sub)">💎・オーブ・記録・実績はそのまま</small>'+gift;
@@ -3963,7 +3967,7 @@ if(!S.tutSeen){
 }
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-19a';
+var APP_VER='2026-11-19b';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 
