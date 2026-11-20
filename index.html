@@ -3077,7 +3077,7 @@ function lvScan(R){
 }
 /* レベルアップの報酬（スキンやキャラを足すときはここに追加する） */
 function lvReward(L){
-  var r={dia:Math.min(200,20+10*L), orbs:{}, t1:L%5===0?3:0};
+  var r={dia:Math.min(200,20+10*L), orbs:{}, t1:L%5===0?10:0};
   var o=ORBS[(Math.random()*ORBS.length)|0]; r.orbs[o.id]=1;
   return r;
 }
@@ -4065,7 +4065,7 @@ if(!S.tutSeen){
 }
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-21a';
+var APP_VER='2026-11-21b';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 
