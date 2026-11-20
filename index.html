@@ -33,6 +33,12 @@ body{display:flex;flex-direction:column}
 .stats{display:flex;gap:9px;margin-top:6px;font-size:11px;color:var(--sub);
   white-space:nowrap;overflow:hidden}
 .stats b{color:var(--pri3)}
+.stats .lv{display:inline-flex;align-items:center;gap:4px;padding:0 7px;border-radius:9px;
+  border:1.5px solid rgba(88,224,138,.6);color:#58e08a;cursor:pointer}
+.stats .lv b{color:#7ef0a4}
+.stats .lv i{font-style:normal;font-size:10px;color:#58e08a}
+.stats .lv.blk{border-color:#ff9f45}
+.stats .lv.blk b,.stats .lv.blk i{color:#ffb36b}
 .stats .pos{margin-left:auto;color:var(--pri3)}
 
 #board{flex:1 1 auto;position:relative;overflow:hidden;background:var(--bg)}
@@ -186,6 +192,8 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
 .tleg canvas{width:34px;height:34px;border-radius:6px;display:block}
 .tleg .ob{display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin-top:1px}
 .tleg .ob svg{display:block}
+.lvob{display:flex;gap:6px;justify-content:center;align-items:center;margin-top:6px}
+.lvob svg{display:block}
 .tleg small{color:var(--sub);font-size:10px;margin-left:4px}
 #dlg{position:fixed;inset:0;background:rgba(5,2,10,.78);z-index:90;display:none;
   align-items:center;justify-content:center;padding:22px;backdrop-filter:blur(3px)}
@@ -324,6 +332,7 @@ input[type=text],input[type=number]{background:#0e0518;border:2px solid var(--li
     <div class="tix" id="tix">🎫 0 / 🏅 0</div>
   </div>
   <div class="stats">
+    <span class="lv" id="s-lv"><b>Lv1</b><i></i></span>
     <span>連続 <b id="s-streak">0</b>日</span>
     <span>無事故 <b id="s-safe">0</b></span>
     <span>累計 <b id="s-total">0</b></span>
@@ -600,7 +609,7 @@ function fresh(){
     pity:0, reached:{}, safeHit:{}, pending:{}, claimCount:{}, ever:{},
     shieldLeft:0, dynaLeft:0, stoneArmed:false, revive:0,
     leafLeft:0, leafMode:'dia', bell:0, poison:[],
-    skipGacha:false, longMs:500, tut:{}, tutRew:0, tutSeen:0, daily:null
+    skipGacha:false, longMs:500, tut:{}, tutRew:0, tutSeen:0, daily:null, level:1
   };
 }
 function load(){
@@ -940,7 +949,7 @@ function blast(x,y,forced){
         delete S.flags[key(cells[i][0]+dx,cells[i][1]+dy)];
   }
   S.blasts[id]={t:t,x:x,y:y,n:n};
-  stuckSoon();
+  stuckSoon(); if(Math.abs(x)<=lvR()+3&&Math.abs(y)<=lvR()+3) lvMark();
   S.safeStreak=0; S.safeHit={};
   return {id:id,t:t,n:n};
 }
@@ -955,6 +964,7 @@ function blastCells(id){
 }
 function unseal(cells,id){
   var b=S.blasts[id], keep=(b.t==='normal'||b.t==='pin');
+  if(cells.some(function(c){ return lvIn(c[0],c[1]); })) lvMark();
   cells.forEach(function(c){
     var k=key(c[0],c[1]);
     if(S.seal[k]!==id) return;
@@ -1023,7 +1033,8 @@ function openOne(x,y,got,noTicket){
 }
 function finishGot(got){
   gain(got);
-  if(got.dug&&got.dug.length) dailyAdd('dug',got.dug.length);
+  if(got.dug&&got.dug.length){ dailyAdd('dug',got.dug.length);
+    if(got.dug.some(function(c){ return lvIn(c[0],c[1]); })) lvMark(); }
   /* 掘ったマスから浮かび上がらせる（視線は指元にあるので、そこで知らせる） */
   if(got.pops) got.pops.forEach(function(c,i){
     setTimeout(function(){ sparkAt(c[0],c[1],c[2]); }, i*90);
@@ -2427,6 +2438,10 @@ function drawFrame(){
   var ox=-SAFE_R*CS-camX, oy=-SAFE_R*CS-camY, os=(SAFE_R*2+1)*CS;
   g.strokeStyle='rgba(255,214,10,.55)'; g.lineWidth=Math.max(1.5,CS*0.06);
   g.strokeRect(ox,oy,os,os);
+  // レベルの目標（薄い緑の枠。封鎖が残っていればオレンジ）
+  var LR=lvR(), lx=-LR*CS-camX, ls=(LR*2+1)*CS, blk=LV.seals>0;
+  g.strokeStyle=blk?'rgba(255,159,69,.22)':'rgba(88,224,138,.16)'; g.lineWidth=6; g.strokeRect(lx,lx-camY+camX,ls,ls);
+  g.strokeStyle=blk?'rgba(255,159,69,.85)':'rgba(88,224,138,.7)'; g.lineWidth=1.5; g.strokeRect(lx,lx-camY+camX,ls,ls);
   // 金庫 / チャレンジ枠
   vaultsInView(x0,y0,x0+nx,y0+ny).forEach(function(v){
     var st=S.vaults[key(v[0],v[1])]; if(!st||!st.f) return;
@@ -2887,6 +2902,7 @@ $('#b-mark').addEventListener('pointerleave',function(){ clearTimeout(mkT); mkT=
 /* ======================= HUD ======================= */
 function hud(){
   if(typeof stuckSoon==='function') stuckSoon();     // 💎・オーブ・封鎖が動いたら詰みを確認し直す
+  if(typeof lvHud==='function') lvHud();
   $('#dia .v').textContent=fmt(S.dia);
   $('#tix').textContent='🎫 '+S.t1+' / 🏅 '+S.t10;
   $('#s-streak').textContent=S.streak;
@@ -3041,6 +3057,76 @@ function dailyHTML(){
   });
   return h+'</div><div class="sec" style="margin:4px 2px 10px">ずっと続く実績</div>';
 }
+
+/* ======================= ユーザーレベル =======================
+   ホームを中心にした正方形（Lv1→2 は 10×10、Lv2→3 は 20×20 …）の中の
+   「地雷以外を全部掘って、封鎖が1つも残っていない」とレベルアップ。
+   正方形は中心のマスを含めるので、正確には 11×11、21×21 …。
+   まとめて達成していた場合は、その分を一度に上げて報酬もまとめて渡す。 */
+var LV={left:0, seals:0}, lvDirty=true, lvT=0, lvMsg=null;
+function lvR(){ return 5*(S.level||1); }
+function lvIn(x,y){ var R=lvR(); return Math.abs(x)<=R&&Math.abs(y)<=R; }
+function lvScan(R){
+  var left=0, ids={};
+  for(var x=-R;x<=R;x++) for(var y=-R;y<=R;y++){
+    var k=key(x,y), sid=S.seal[k];
+    if(sid){ ids[sid]=1; continue; }
+    if(S.opened[k]===undefined&&!isMine(x,y)) left++;
+  }
+  return {left:left, seals:Object.keys(ids).length};
+}
+/* レベルアップの報酬（スキンやキャラを足すときはここに追加する） */
+function lvReward(L){
+  var r={dia:Math.min(200,20+10*L), orbs:{}, t1:L%5===0?3:0};
+  var o=ORBS[(Math.random()*ORBS.length)|0]; r.orbs[o.id]=1;
+  return r;
+}
+function lvMark(){ lvDirty=true; clearTimeout(lvT); lvT=setTimeout(lvUpdate,1200); }
+function lvUpdate(){
+  if(!lvDirty) return; lvDirty=false;
+  var from=S.level||1, sum={dia:0,t1:0,orbs:{}};
+  LV=lvScan(lvR());
+  while(LV.left===0&&LV.seals===0){
+    S.level=(S.level||1)+1;
+    var r=lvReward(S.level); sum.dia+=r.dia; sum.t1+=r.t1;
+    for(var k in r.orbs) sum.orbs[k]=(sum.orbs[k]||0)+r.orbs[k];
+    LV=lvScan(lvR());
+  }
+  if(S.level>from){
+    S.dia+=sum.dia; S.t1+=sum.t1; for(var k in sum.orbs) S.orbs[k]=(S.orbs[k]||0)+sum.orbs[k];
+    save();
+    var ob=Object.keys(sum.orbs).map(function(id){ return orbSvg(OB[id],22)+'<small>×'+sum.orbs[id]+'</small>'; }).join(' ');
+    lvMsg={from:from,to:S.level,html:'💎<b>'+sum.dia+'</b>'+(sum.t1?'　🎫ガチャ券<b>'+sum.t1+'</b>枚':'')
+      +'<div class="lvob">'+ob+'</div>'};
+    lvShowMsg();
+  }
+  lvHud(); render();
+}
+function lvShowMsg(){
+  if(!lvMsg) return;
+  if(tutOpen||$('#dlg').classList.contains('show')||document.querySelector('.panel.show')){ setTimeout(lvShowMsg,1500); return; }
+  var m=lvMsg; lvMsg=null; var R=lvR();
+  fxFlash('#58e08a',500);
+  dlg('🎉','レベルアップ！','Lv'+m.from+' → <b style="font-size:20px;color:#7ef0a4">Lv'+m.to+'</b>'
+    +(m.to-m.from>1?'<br><small style="color:var(--sub)">'+(m.to-m.from)+'レベル分まとめて達成！</small>':'')
+    +'<br><br>'+m.html+'<br><small style="color:var(--sub)">次の目標：ホームを中心に '+(R*2)+'×'+(R*2)+'</small>',[{t:'OK'}]);
+  hud();
+}
+function lvHud(){
+  var el=$('#s-lv'); if(!el) return;
+  el.querySelector('b').textContent='Lv'+(S.level||1);
+  el.classList.toggle('blk',LV.seals>0);
+  el.querySelector('i').textContent=LV.seals>0?'封鎖'+LV.seals:'あと'+fmt(LV.left);
+}
+$('#s-lv').onclick=function(){
+  var R=lvR(), L=S.level||1, nx=lvReward(L+1);
+  dlg('🏅','ユーザーレベル Lv'+L,
+    'ホームを中心にした<b style="color:#7ef0a4">緑の枠</b>（'+(R*2)+'×'+(R*2)+'）の中を、<br>地雷以外ぜんぶ掘って、封鎖を1つも残さないとレベルアップ。<br><br>'
+    +'残り <b>'+fmt(LV.left)+'</b>マス　'+(LV.seals?'<b style="color:#ffb36b">封鎖 '+LV.seals+'つ</b>':'封鎖なし')
+    +(LV.seals?'<br><small style="color:#ffb36b">封鎖が残っているあいだはレベルが上がらない（枠がオレンジ）</small>':'')
+    +'<br><br><small style="color:var(--sub)">次の報酬：💎'+nx.dia+'＋オーブ1個'+(nx.t1?'＋🎫'+nx.t1+'枚':'')+'</small>',
+    [{t:'閉じる',sub:true},{t:'枠を見る',f:function(){ centerOn(0,0,Math.max(MIN_CS,Math.min(46,Math.floor(Math.min(innerWidth,innerHeight)/(R*2+3))))); render(); }}]);
+};
 
 /* ======================= 日付 ======================= */
 function rollDay(){
@@ -3894,7 +3980,7 @@ function resetBoard(){
   S.safeStreak=0; S.safeHit={};
   S.shieldLeft=0; S.dynaLeft=0; S.stoneArmed=false; S.leafLeft=0; S.ghostUntil=0;
   iceSet=null; icePhase=null; setMode('dig');
-  centerOn(0,0,46);
+  centerOn(0,0,46); lvMark();
 }
 function resFinish(){
   var gift=!S.tutRew;
@@ -3962,7 +4048,8 @@ $('#tagain').onclick=function(){ if(T) tutBuild(T.i); };
 /* ======================= 起動 ======================= */
 window.addEventListener('resize',resize);
 rollDay(); checkTracks(); resize(); hud(); setMode('dig'); save();
-setTimeout(stuckCheck,2600);                      // 起動時にも確認（ほかの案内が出ていれば次の操作のあとで）
+setTimeout(stuckCheck,2600);
+lvDirty=true; lvUpdate();                         // 起動時はすぐ計算（アップデート前に達成済みの分もここで上がる）                      // 起動時にも確認（ほかの案内が出ていれば次の操作のあとで）
 /* 旧版で💎100だけ受け取った人には、増えた分（ガチャ券）を後から渡す */
 if(S.tutRew===1){ S.tutRew=2; S.t1+=TUT_TIX; hud(); save();
   setTimeout(function(){ toast('🎓 あそびかたのごほうび追加：🎫ガチャ券'+TUT_TIX+'枚'); },1200); }
@@ -3978,7 +4065,7 @@ if(!S.tutSeen){
 }
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-19c';
+var APP_VER='2026-11-21a';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 
