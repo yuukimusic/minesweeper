@@ -4049,6 +4049,9 @@ $('#tagain').onclick=function(){ if(T) tutBuild(T.i); };
 window.addEventListener('resize',resize);
 rollDay(); checkTracks(); resize(); hud(); setMode('dig'); save();
 setTimeout(stuckCheck,2600);
+/* 5の倍数レベルの券が3枚だった版（2026-11-21a）で受け取った人に、差額の7枚を1回だけ渡す */
+if(!S.lvTixFix){ S.lvTixFix=1; var n5=Math.floor((S.level||1)/5);
+  if(n5>0){ S.t1+=7*n5; save(); setTimeout(function(){ toast('🎫 レベル報酬の差額：ガチャ券'+(7*n5)+'枚を追加'); hud(); },1800); } }
 lvDirty=true; lvUpdate();                         // 起動時はすぐ計算（アップデート前に達成済みの分もここで上がる）                      // 起動時にも確認（ほかの案内が出ていれば次の操作のあとで）
 /* 旧版で💎100だけ受け取った人には、増えた分（ガチャ券）を後から渡す */
 if(S.tutRew===1){ S.tutRew=2; S.t1+=TUT_TIX; hud(); save();
@@ -4065,7 +4068,7 @@ if(!S.tutSeen){
 }
 
 /* ======================= オフライン対応 ======================= */
-var APP_VER='2026-11-21b';
+var APP_VER='2026-11-21c';
 $('#vertxt').textContent='バージョン '+APP_VER
   +(location.protocol==='file:' ? '（ローカル表示のためオフライン機能は無効）' : '');
 
